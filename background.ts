@@ -25,6 +25,10 @@ import { createDigest } from '@otplib/plugin-crypto-js';
 import { keyDecoder, keyEncoder } from '@otplib/plugin-thirty-two';
 import { Buffer } from 'buffer/';
 import { fetchAndProcessTickets, ticketStateKey } from './utils/ticketSyncEngine';
+import {
+  hasOriginPermission,
+  permissionErrorMessage,
+} from './utils/permissions';
 
 ;(globalThis as unknown as { Buffer?: typeof Buffer | undefined }).Buffer = Buffer;
 
@@ -42,6 +46,8 @@ interface Settings {
   projectId: string | null;
 }
 
+type StatsErrorKind = 'not_configured' | 'permission' | 'other';
+
 interface Stats {
   user: {
     id: number;
@@ -55,6 +61,7 @@ interface Stats {
   ranking: UserHours[];
   settings: Settings & { rankingExpectedHours: number };
   error?: string;
+  errorKind?: StatsErrorKind;
 }
 
 interface CachedStats {
@@ -100,14 +107,6 @@ type OtpAuthenticatorGenerator = {
 };
 
 let otpAuthenticator: OtpAuthenticatorGenerator | null = null;
-
-function getRedmineOrigin(redmineUrl: string): string {
-  return `${redmineUrl.trim().replace(/\/$/, '')}/*`;
-}
-
-async function hasRedminePermission(redmineUrl: string): Promise<boolean> {
-  return await chrome.permissions.contains({ origins: [getRedmineOrigin(redmineUrl)] });
-}
 
 // ============== Alarms ==============
 
@@ -241,7 +240,7 @@ async function updateBadge(): Promise<void> {
       return;
     }
 
-    if (!(await hasRedminePermission(settings.redmineUrl))) {
+    if (!(await hasOriginPermission(settings.redmineUrl))) {
       chrome.action.setBadgeText({ text: '!' });
       chrome.action.setBadgeBackgroundColor({ color: '#FFA726' });
       return;
@@ -298,6 +297,9 @@ async function runTicketSyncBackground(): Promise<void> {
     if (!settings.redmineUrl || !settings.redmineApiKey || !settings.gitlabUrl || !settings.gitlabToken) {
       return;
     }
+
+    if (!(await hasOriginPermission(settings.redmineUrl))) return;
+    if (!(await hasOriginPermission(settings.gitlabUrl))) return;
     
     const groupedTickets = await fetchAndProcessTickets(
       settings.redmineUrl,
@@ -520,12 +522,13 @@ async function getStats(): Promise<Stats> {
     const settings = await getSettings();
 
     if (!settings.redmineUrl || !settings.redmineApiKey) {
-      return { error: 'Not configured' } as unknown as Stats;
+      return { error: 'Not configured', errorKind: 'not_configured' } as unknown as Stats;
     }
 
-    if (!(await hasRedminePermission(settings.redmineUrl))) {
+    if (!(await hasOriginPermission(settings.redmineUrl))) {
       return {
-        error: 'Permission not granted. Open settings and test the connection to allow Redmine access.'
+        error: permissionErrorMessage(['Redmine']),
+        errorKind: 'permission',
       } as unknown as Stats;
     }
 

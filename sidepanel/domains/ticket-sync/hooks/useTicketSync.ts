@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ShowState } from '../../../shared/types/index'
 import type { TicketGroup } from '../types/index'
 import { fetchAndProcessTickets, ticketStateKey } from '../../../../utils/ticketSyncEngine'
+import { hasOriginPermission, permissionErrorMessage } from '../../../../utils/permissions'
 
 export function useTicketSync() {
   const [groups, setGroups] = useState<TicketGroup[]>([])
@@ -42,6 +43,15 @@ export function useTicketSync() {
 
       if (!redmineUrl || !redmineApiKey) {
         setShowState('notConfigured')
+        return
+      }
+
+      const missing: string[] = []
+      if (!(await hasOriginPermission(redmineUrl))) missing.push('Redmine')
+      if (!(await hasOriginPermission(gitlabUrl))) missing.push('GitLab')
+      if (missing.length > 0) {
+        setError(permissionErrorMessage(missing))
+        setShowState('needsPermission')
         return
       }
 

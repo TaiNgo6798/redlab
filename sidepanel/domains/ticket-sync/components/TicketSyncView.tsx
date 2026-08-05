@@ -226,6 +226,18 @@ export function TicketSyncView({ groups, showState, isSyncing, syncProgress, err
         </PanelCard>
       )}
 
+      {showState === 'needsPermission' && (
+        <PanelCard className="p-6 text-center">
+          <ExclamationCircleOutlined className="mb-3 text-2xl text-danger" />
+          <Text type="danger" className="mb-4 block">
+            {error}
+          </Text>
+          <Button type="primary" icon={<SettingOutlined />} onClick={onConfigure}>
+            Open Settings
+          </Button>
+        </PanelCard>
+      )}
+
       {showState === 'error' && (
         <PanelCard className="p-6 text-center">
           <ExclamationCircleOutlined className="mb-3 text-2xl text-danger" />

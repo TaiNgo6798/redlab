@@ -83,13 +83,15 @@ function App() {
           projects={settings.projects}
           onSettingsChange={settings.handleSettingsChange}
           onTestConnection={settings.testConnection}
+          onTestGitlabConnection={settings.testGitlabConnection}
           onUrlBlur={settings.handleUrlBlur}
           onRedmineApiKeyBlur={settings.handleRedmineApiKeyBlur}
           onGitlabUrlBlur={settings.handleGitlabUrlBlur}
           onGitlabTokenBlur={settings.handleGitlabTokenBlur}
           onExportSettings={settings.exportSettings}
           onImportSettings={settings.importSettings}
-          connectionStatus={settings.connectionStatus}
+          redmineConnectionStatus={settings.redmineConnectionStatus}
+          gitlabConnectionStatus={settings.gitlabConnectionStatus}
           saveStatus={settings.saveStatus}
           validationErrors={settings.validationErrors}
         />

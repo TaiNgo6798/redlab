@@ -8,6 +8,7 @@
   <img src="assets/timelog.png" width="400" alt="RedLab overview" />
 </p>
 
+**Chrome Web Store:** [RedLab](https://chromewebstore.google.com/detail/redlab/pimegpjllpdeeflnmfgkkoleobfncbjb)  
 **GitHub:** [TaiNgo6798/redlab](https://github.com/TaiNgo6798/redlab)  
 **Privacy policy:** [pitogram.cc/policies/privacy](https://pitogram.cc/policies/privacy)
 
@@ -27,7 +28,12 @@
 - **Settings** — Redmine URL + API key, GitLab URL + token, hours-per-day, badge/ranking display, settings import/export
 - **Local-only credentials** — Keys stay in Chrome storage; calls go only to your configured hosts
 
-## Install (developer)
+## Install
+
+**From the store (recommended):**  
+[chromewebstore.google.com/detail/redlab/pimegpjllpdeeflnmfgkkoleobfncbjb](https://chromewebstore.google.com/detail/redlab/pimegpjllpdeeflnmfgkkoleobfncbjb)
+
+### Developer (from source)
 
 ```bash
 git clone https://github.com/TaiNgo6798/redlab.git

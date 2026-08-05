@@ -1,8 +1,11 @@
 import type { DisplayType, RedmineProject, TimeScope, UserHours } from '../../../utils/api'
 
 export type ViewName = 'overview' | 'settings' | 'otp' | 'ticket-sync'
-export type ShowState = 'notConfigured' | 'error' | 'loading' | 'main'
+export type ShowState = 'notConfigured' | 'needsPermission' | 'error' | 'loading' | 'main'
 export type StatusType = 'loading' | 'success' | 'error'
+export type ConnectionStatus = { message: string; type: StatusType }
+/** Structured error from background getStats / similar. */
+export type StatsErrorKind = 'not_configured' | 'permission' | 'other'
 
 export interface OverviewSettings {
   badgeDisplayType: DisplayType
@@ -28,6 +31,7 @@ export interface Stats {
   ranking: UserHours[]
   settings: OverviewSettings
   error?: string
+  errorKind?: StatsErrorKind
 }
 
 export interface CachedStats {

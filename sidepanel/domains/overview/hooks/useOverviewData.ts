@@ -32,8 +32,18 @@ export function useOverviewData() {
 
     try {
       const data = await getStats()
-      if (data.error === 'Not configured') {
+      if (data.errorKind === 'not_configured' || data.error === 'Not configured') {
         setShowState('notConfigured')
+        return
+      }
+      if (data.errorKind === 'permission') {
+        setShowState(prev => {
+          if (prev !== 'main') {
+            setErrorMessage(data.error ?? '')
+            return 'needsPermission'
+          }
+          return prev
+        })
         return
       }
       if (data.error) {

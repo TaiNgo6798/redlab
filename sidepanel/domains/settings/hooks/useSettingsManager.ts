@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getCurrentUser, getProjects, type RedmineProject } from '../../../../utils/api'
-import type { StatusType } from '../../../shared/types/index'
+import { getCurrentUser, getGitlabUser, getProjects, type RedmineProject } from '../../../../utils/api'
+import {
+  ensureOriginPermission,
+  hasOriginPermission,
+  revokeOriginPermission,
+} from '../../../../utils/permissions'
+import type { ConnectionStatus, StatusType } from '../../../shared/types/index'
 import { DEFAULT_SETTINGS } from '../consts/defaultSettings'
 import type { Settings, SettingsFormData } from '../types/index'
 import { settingsSchema } from '../utils/schema'
 import { serializeSettings } from '../utils/serializeSettings'
 
 type FieldErrors = Record<string, string>
+
+const EMPTY_STATUS: ConnectionStatus = { message: '', type: 'loading' }
 
 function toFormData(saved: Partial<Settings>): SettingsFormData {
   return {
@@ -37,15 +44,12 @@ function validateSettings(data: SettingsFormData): { ok: true; data: Settings } 
   return { ok: false, errors: fieldErrorsFromZod(result.error) }
 }
 
-function originFromUrl(url: string): string {
-  return `${url.trim().replace(/\/$/, '')}/*`
-}
-
 export function useSettingsManager() {
   const [settings, setSettings] = useState<SettingsFormData>(DEFAULT_SETTINGS)
   const [projects, setProjects] = useState<RedmineProject[]>([])
-  const [connectionStatus, setConnectionStatus] = useState<{ message: string; type: StatusType }>({ message: '', type: 'loading' })
-  const [saveStatus, setSaveStatus] = useState<{ message: string; type: StatusType }>({ message: '', type: 'loading' })
+  const [redmineConnectionStatus, setRedmineConnectionStatus] = useState<ConnectionStatus>(EMPTY_STATUS)
+  const [gitlabConnectionStatus, setGitlabConnectionStatus] = useState<ConnectionStatus>(EMPTY_STATUS)
+  const [saveStatus, setSaveStatus] = useState<ConnectionStatus>(EMPTY_STATUS)
   const [validationErrors, setValidationErrors] = useState<FieldErrors>({})
 
   const initialLoadComplete = useRef(false)
@@ -59,7 +63,7 @@ export function useSettingsManager() {
 
   const flashSave = useCallback((message: string, type: StatusType, ms = 2000) => {
     setSaveStatus({ message, type })
-    if (message) setTimeout(() => setSaveStatus({ message: '', type: 'loading' }), ms)
+    if (message) setTimeout(() => setSaveStatus(EMPTY_STATUS), ms)
   }, [])
 
   const loadSettings = useCallback(async () => {
@@ -73,8 +77,9 @@ export function useSettingsManager() {
       serializedSettingsRef.current = serializeSettings(loaded)
 
       if (saved.redmineUrl && saved.redmineApiKey) {
-        const hasPermission = await chrome.permissions.contains({ origins: [originFromUrl(saved.redmineUrl)] })
-        if (hasPermission) setProjects(await getProjects(saved.redmineUrl, saved.redmineApiKey))
+        if (await hasOriginPermission(saved.redmineUrl)) {
+          setProjects(await getProjects(saved.redmineUrl, saved.redmineApiKey))
+        }
       }
     } catch (error) {
       console.error('Failed to load settings:', error)
@@ -113,31 +118,53 @@ export function useSettingsManager() {
   }, [flashSave])
 
   const testConnection = useCallback(async () => {
-    const redmineUrl = settings.redmineUrl?.trim().replace(/\/$/, '') || ''
-    const redmineApiKey = settings.redmineApiKey?.trim() || ''
+    const redmineUrl = settingsRef.current.redmineUrl?.trim().replace(/\/$/, '') || ''
+    const redmineApiKey = settingsRef.current.redmineApiKey?.trim() || ''
     if (!redmineUrl || !redmineApiKey) {
-      setConnectionStatus({ message: 'Please enter URL and API key', type: 'error' })
+      setRedmineConnectionStatus({ message: 'Please enter URL and API key', type: 'error' })
       return
     }
-    setConnectionStatus({ message: 'Testing...', type: 'loading' })
+    setRedmineConnectionStatus({ message: 'Testing...', type: 'loading' })
 
     try {
-      const origin = originFromUrl(redmineUrl)
-      const alreadyGranted = await chrome.permissions.contains({ origins: [origin] })
-      if (!alreadyGranted) {
-        const granted = await chrome.permissions.request({ origins: [origin] })
-        if (!granted) {
-          setConnectionStatus({ message: 'Permission denied — allow access to connect', type: 'error' })
-          return
-        }
+      const granted = await ensureOriginPermission(redmineUrl)
+      if (!granted) {
+        setRedmineConnectionStatus({ message: 'Permission denied — allow access to connect', type: 'error' })
+        return
       }
       const user = await getCurrentUser(redmineUrl, redmineApiKey)
-      setConnectionStatus({ message: `Connected as ${user.login}`, type: 'success' })
+      setRedmineConnectionStatus({ message: `Connected as ${user.login}`, type: 'success' })
       setProjects(await getProjects(redmineUrl, redmineApiKey))
     } catch (error) {
-      setConnectionStatus({ message: error instanceof Error ? error.message : 'Connection failed', type: 'error' })
+      setRedmineConnectionStatus({ message: error instanceof Error ? error.message : 'Connection failed', type: 'error' })
     }
-  }, [settings.redmineUrl, settings.redmineApiKey])
+  }, [])
+
+  const testGitlabConnection = useCallback(async () => {
+    const gitlabUrl = settingsRef.current.gitlabUrl?.trim().replace(/\/$/, '') || ''
+    const gitlabToken = settingsRef.current.gitlabToken?.trim() || ''
+    if (!gitlabUrl || !gitlabToken) {
+      setGitlabConnectionStatus({ message: 'Please enter URL and token', type: 'error' })
+      return
+    }
+    setGitlabConnectionStatus({ message: 'Testing...', type: 'loading' })
+
+    const granted = await ensureOriginPermission(gitlabUrl)
+    if (!granted) {
+      setGitlabConnectionStatus({ message: 'Permission denied — allow access to connect', type: 'error' })
+      return
+    }
+
+    try {
+      const user = await getGitlabUser(gitlabUrl, gitlabToken)
+      setGitlabConnectionStatus({ message: `Connected as ${user.username}`, type: 'success' })
+    } catch (error) {
+      setGitlabConnectionStatus({
+        message: error instanceof Error ? error.message : 'Connection failed',
+        type: 'error',
+      })
+    }
+  }, [])
 
   const handleSettingsChange = useCallback((updates: Partial<SettingsFormData>) => {
     setSettings(prev => ({ ...prev, ...updates }))
@@ -150,14 +177,10 @@ export function useSettingsManager() {
 
     const field = settingsSchema.shape.redmineUrl.safeParse(data.redmineUrl)
     if (field.success) {
-      const origin = originFromUrl(newUrl)
-      const alreadyGranted = await chrome.permissions.contains({ origins: [origin] })
-      if (!alreadyGranted) {
-        const granted = await chrome.permissions.request({ origins: [origin] }).catch(() => false)
-        if (!granted) flashSave('Permission denied — grant access to enable syncing', 'error', 3000)
-      }
+      const granted = await ensureOriginPermission(newUrl)
+      if (!granted) flashSave('Permission denied — grant access to enable syncing', 'error', 3000)
       if (previousUrl.current) {
-        void chrome.permissions.remove({ origins: [originFromUrl(previousUrl.current)] }).catch(() => {})
+        void revokeOriginPermission(previousUrl.current)
       }
     }
     void saveSettingsData(data)
@@ -176,14 +199,10 @@ export function useSettingsManager() {
     if (newUrl) {
       try {
         new URL(newUrl)
-        const origin = originFromUrl(newUrl)
-        const alreadyGranted = await chrome.permissions.contains({ origins: [origin] })
-        if (!alreadyGranted) {
-          const granted = await chrome.permissions.request({ origins: [origin] }).catch(() => false)
-          if (!granted) {
-            flashSave('Permission denied — grant access to enable GitLab syncing', 'error', 3000)
-            canSave = false
-          }
+        const granted = await ensureOriginPermission(newUrl)
+        if (!granted) {
+          flashSave('Permission denied — grant access to enable GitLab syncing', 'error', 3000)
+          canSave = false
         }
       } catch {
         canSave = false
@@ -192,7 +211,7 @@ export function useSettingsManager() {
 
     if (!canSave) return
     if (previousGitlabUrl.current) {
-      void chrome.permissions.remove({ origins: [originFromUrl(previousGitlabUrl.current)] }).catch(() => {})
+      void revokeOriginPermission(previousGitlabUrl.current)
     }
     previousGitlabUrl.current = newUrl
     void saveSettingsData(data)
@@ -261,6 +280,7 @@ export function useSettingsManager() {
       previousUrl.current = validSettings.redmineUrl || ''
       previousGitlabUrl.current = validSettings.gitlabUrl || ''
       serializedSettingsRef.current = serializeSettings(validSettings)
+      settingsRef.current = validSettings
 
       flashSave('Settings imported successfully!', 'success', 3000)
       void chrome.runtime.sendMessage({ action: 'updateBadge' })
@@ -273,7 +293,8 @@ export function useSettingsManager() {
   return {
     settings,
     projects,
-    connectionStatus,
+    redmineConnectionStatus,
+    gitlabConnectionStatus,
     saveStatus,
     validationErrors,
     handleSettingsChange,
@@ -282,6 +303,7 @@ export function useSettingsManager() {
     handleGitlabUrlBlur,
     handleGitlabTokenBlur,
     testConnection,
+    testGitlabConnection,
     exportSettings,
     importSettings,
   }

@@ -1,5 +1,5 @@
 import { Progress, Spin, Tag, Typography, Button } from 'antd'
-import { ExclamationCircleOutlined, LockOutlined } from '@ant-design/icons'
+import { ExclamationCircleOutlined, LockOutlined, SettingOutlined } from '@ant-design/icons'
 import { useMemo, useState } from 'react'
 import { GlassSelect } from '../../../shared/components/GlassSelect'
 import { PanelCard } from '../../../shared/components/PanelCard'
@@ -105,7 +105,22 @@ export function OverviewView({ currentSettings, currentUser, rankingData, stats,
   return (
     <main className="flex flex-1 flex-col">
       {showState === 'notConfigured' && <PanelCard className="p-6 text-center"><ExclamationCircleOutlined className="mb-3 text-2xl text-warning" /><Text type="secondary" className="mb-4 block">Configure your Redmine URL and API key to start tracking time.</Text><Button type="primary" onClick={onConfigure}>Open Settings</Button></PanelCard>}
-      {showState === 'error' && <PanelCard className="p-6 text-center"><ExclamationCircleOutlined className="mb-3 text-2xl text-danger" /><Text type="danger" className="mb-4 block">{errorMessage}</Text><Button onClick={onRetry}>Retry</Button></PanelCard>}
+      {showState === 'needsPermission' && (
+        <PanelCard className="p-6 text-center">
+          <ExclamationCircleOutlined className="mb-3 text-2xl text-danger" />
+          <Text type="danger" className="mb-4 block">{errorMessage}</Text>
+          <Button type="primary" icon={<SettingOutlined />} onClick={onConfigure}>
+            Open Settings
+          </Button>
+        </PanelCard>
+      )}
+      {showState === 'error' && (
+        <PanelCard className="p-6 text-center">
+          <ExclamationCircleOutlined className="mb-3 text-2xl text-danger" />
+          <Text type="danger" className="mb-4 block">{errorMessage}</Text>
+          <Button onClick={onRetry}>Retry</Button>
+        </PanelCard>
+      )}
       {showState === 'loading' && <PanelCard className="flex flex-col items-center justify-center p-10"><Spin size="large" /><Text className="mt-3">Loading...</Text></PanelCard>}
       {showState === 'main' && stats && (
         <>
