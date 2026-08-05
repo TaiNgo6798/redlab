@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - RedLab</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      color: #0d9488;
+    }
+
+    .updated {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      color: #1f2937;
+    }
+
+    h3 {
+      font-size: 16px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      color: #374151;
+    }
+
+    p {
+      margin-bottom: 15px;
+      color: #4b5563;
+    }
+
+    ul {
+      margin-bottom: 15px;
+      padding-left: 25px;
+    }
+
+    li {
+      margin-bottom: 8px;
+      color: #4b5563;
+    }
+
+    strong {
+      color: #1f2937;
+    }
+
+    .section {
+      margin-bottom: 25px;
+    }
+
+    .highlight-box {
+      background: #f0fdfa;
+      border-left: 4px solid #0d9488;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .highlight-box p {
+      margin: 0;
+    }
+
+    a {
+      color: #0d9488;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Privacy Policy</h1>
+    <p class="updated"><strong>RedLab</strong><br>Last Updated: February 2026</p>
+
+    <div class="section">
+      <h2>Overview</h2>
+      <p>RedLab is a Chrome extension for Redmine time tracking, team leaderboards, GitLab ticket/MR status sync,
+        and local OTP codes. We respect your privacy and are committed to protecting your personal data.</p>
+    </div>
+
+    <div class="section">
+      <h2>Data We Collect</h2>
+
+      <h3>1. API Credentials</h3>
+      <ul>
+        <li><strong>What:</strong> Redmine URL and API key; optional GitLab URL and personal access token</li>
+        <li><strong>Where it's stored:</strong> Locally in your browser's Chrome storage</li>
+        <li><strong>Purpose:</strong> To talk to <em>your</em> Redmine and GitLab instances for hours, tickets, and merge requests</li>
+      </ul>
+
+      <h3>2. Time Tracking &amp; Ticket Data</h3>
+      <ul>
+        <li><strong>What:</strong> Logged hours, leaderboard data, and cached ticket/MR status summaries</li>
+        <li><strong>Where it's stored:</strong> Temporarily cached in your browser's local storage</li>
+        <li><strong>Purpose:</strong> To show progress, leaderboards, and Ticket Sync groups</li>
+      </ul>
+
+      <h3>3. OTP Secrets (optional)</h3>
+      <ul>
+        <li><strong>What:</strong> Authenticator labels and TOTP secrets you add yourself</li>
+        <li><strong>Where it's stored:</strong> Locally in Chrome storage on your device only</li>
+        <li><strong>Purpose:</strong> To generate one-time codes in the side panel</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>How We Use Your Data</h2>
+      <div class="highlight-box">
+        <p>Your API credentials are used <strong>only</strong> to communicate with <strong>your</strong> project
+          management instance.</p>
+      </div>
+      <ul>
+        <li>We do not send your data to any third-party servers</li>
+        <li>We do not collect analytics or usage statistics</li>
+        <li>We do not track your browsing activity</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Data Storage & Security</h2>
+      <ul>
+        <li>All data is stored locally on your device using Chrome's secure storage API</li>
+        <li>Your API key is never transmitted outside of your browser except to your configured server</li>
+        <li>Data is encrypted at rest by Chrome's built-in security mechanisms</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Data Sharing</h2>
+      <div class="highlight-box">
+        <p><strong>We do not share your data with anyone.</strong></p>
+      </div>
+      <ul>
+        <li>No third-party data sharing</li>
+        <li>No data sales to advertisers</li>
+        <li>No analytics or tracking services</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Data Retention</h2>
+      <p>Your data remains on your device until you:</p>
+      <ul>
+        <li>Uninstall the extension (Chrome will clear all locally stored data)</li>
+        <li>Manually clear your browser data/extension data</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Your Rights</h2>
+      <p>You have the right to:</p>
+      <ul>
+        <li><strong>Access</strong> your stored data through Chrome's extension settings</li>
+        <li><strong>Delete</strong> your data at any time by clearing extension data or uninstalling</li>
+        <li><strong>Opt-out</strong> by simply not using the extension</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Children's Privacy</h2>
+      <p>This extension is not directed to children under the age of 13. We do not knowingly collect personal
+        information from children under 13.</p>
+    </div>
+
+    <div class="section">
+      <h2>Changes to This Policy</h2>
+      <p>We may update this privacy policy from time to time. Any changes will be posted on this page.</p>
+    </div>
+
+    <div class="section">
+      <h2>Technologies Used</h2>
+      <p>This extension is built with TypeScript, React 19, Vite 7, CRXJS Vite Plugin (Manifest V3), and Tailwind CSS 4.
+        All code runs locally in your browser — no external servers or services are used beyond your configured project
+        management instance.</p>
+    </div>
+
+    <div class="section">
+      <h2>Contact</h2>
+      <p>If you have questions about this privacy policy or our data practices, please contact us through the Chrome Web
+        Store or by opening an issue on our <a href="https://github.com/TaiNgo6798/redlab">GitHub repository</a>.
+      </p>
+    </div>
+
+    <p style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e5e5; font-size: 12px; color: #999;">
+      This Privacy Policy is designed to comply with Chrome Web Store requirements and general data protection
+      regulations.
+    </p>
+  </div>
+</body>
+
+</html>

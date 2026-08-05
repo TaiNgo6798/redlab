@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "jsx": "react-jsx",
+    "types": [
+      "chrome"
+    ]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.js",
+    "vite.config.ts",
+    "tailwind.config.js",
+    "postcss.config.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

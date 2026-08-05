@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Bump patch version
+npm run bump patch
+
+# Sync manifest.json version from package.json
+PKG_VERSION=$(node -p "require('./package.json').version")
+sed -i '' "s/\"version\": \".*\"/\"version\": \"$PKG_VERSION\"/" manifest.json
+
+git add package.json manifest.json package-lock.json

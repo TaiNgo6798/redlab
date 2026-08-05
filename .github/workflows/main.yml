@@ -1,0 +1,154 @@
+name: Build and Publish Extension
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build extension package
+        run: npm run build
+
+      - name: Create extension archive
+        run: |
+          cd dist
+          zip -r ../extension.zip .
+
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: extension-zip
+          path: extension.zip
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      EXTENSION_ID: pimegpjllpdeeflnmfgkkoleobfncbjb
+      PUBLISHER_ID: 5e9df0bc-6903-42b6-9d60-0c7acc61b2a2
+      GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+      CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+    steps:
+      - name: Download extension artifact
+        uses: actions/download-artifact@v6
+        with:
+          name: extension-zip
+
+      - name: Publish to Chrome Web Store
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          api_request() {
+            local label="$1"
+            shift
+
+            local response_file
+            local http_code
+            response_file="$(mktemp)"
+
+            http_code="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' "$@")"
+
+            if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+              echo "${label} failed with HTTP ${http_code}" >&2
+              echo "${label} response body:" >&2
+              cat "$response_file" >&2
+              rm -f "$response_file"
+              exit 1
+            fi
+
+            cat "$response_file"
+            rm -f "$response_file"
+          }
+
+          for required_var in GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET CHROME_REFRESH_TOKEN; do
+            if [ -z "${!required_var:-}" ]; then
+              echo "Missing required secret: ${required_var}" >&2
+              exit 1
+            fi
+          done
+
+          TOKEN_RESPONSE="$(api_request 'Token request' https://oauth2.googleapis.com/token \
+            -d "client_id=${GOOGLE_OAUTH_CLIENT_ID}" \
+            -d "client_secret=${GOOGLE_OAUTH_CLIENT_SECRET}" \
+            -d "refresh_token=${CHROME_REFRESH_TOKEN}" \
+            -d "grant_type=refresh_token")"
+
+          ACCESS_TOKEN="$(node -e "const data = JSON.parse(process.argv[1]); if (!data.access_token) process.exit(1); process.stdout.write(data.access_token);" "$TOKEN_RESPONSE")"
+
+          UPLOAD_RESPONSE="$(api_request 'Upload request' \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "x-goog-api-version: 2" \
+            -X POST \
+            --data-binary @extension.zip \
+            "https://chromewebstore.googleapis.com/upload/v2/publishers/${PUBLISHER_ID}/items/${EXTENSION_ID}:upload")"
+
+          echo "Upload response: ${UPLOAD_RESPONSE}"
+
+          UPLOAD_STATE="$(node -e "const data = JSON.parse(process.argv[1]); if (!data.uploadState) process.exit(1); process.stdout.write(data.uploadState);" "$UPLOAD_RESPONSE")"
+
+          if [ "$UPLOAD_STATE" = "UPLOAD_STATE_UNSPECIFIED" ]; then
+            echo "Upload failed: ${UPLOAD_RESPONSE}" >&2
+            exit 1
+          fi
+
+          if [ "$UPLOAD_STATE" = "UPLOAD_IN_PROGRESS" ]; then
+            for attempt in $(seq 1 15); do
+              sleep 5
+              STATUS_RESPONSE="$(api_request "Fetch status attempt ${attempt}" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                "https://chromewebstore.googleapis.com/v2/publishers/${PUBLISHER_ID}/items/${EXTENSION_ID}:fetchStatus")"
+
+              echo "Fetch status attempt ${attempt}: ${STATUS_RESPONSE}"
+
+              UPLOAD_STATE="$(node -e "const data = JSON.parse(process.argv[1]); if (!data.uploadState) process.exit(1); process.stdout.write(data.uploadState);" "$STATUS_RESPONSE")"
+
+              if [ "$UPLOAD_STATE" = "UPLOAD_SUCCESS" ]; then
+                break
+              fi
+
+              if [ "$UPLOAD_STATE" != "UPLOAD_IN_PROGRESS" ]; then
+                echo "Upload did not complete successfully: ${STATUS_RESPONSE}" >&2
+                exit 1
+              fi
+
+              if [ "$attempt" -eq 15 ]; then
+                echo "Timed out waiting for upload processing to finish." >&2
+                exit 1
+              fi
+            done
+          fi
+
+          PUBLISH_RESPONSE="$(api_request 'Publish request' \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d '{"publishType":"DEFAULT_PUBLISH"}' \
+            "https://chromewebstore.googleapis.com/v2/publishers/${PUBLISHER_ID}/items/${EXTENSION_ID}:publish")"
+
+          echo "Publish response: ${PUBLISH_RESPONSE}"

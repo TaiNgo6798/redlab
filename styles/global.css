@@ -1,0 +1,339 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #1a1a2e;
+  --color-bg-secondary: #16213e;
+  --color-bg-card: #0f3460;
+  --color-bg-sidebar: #0d1b2a;
+  --color-accent: #007990;
+  --color-accent-light: #00a3b8;
+  --color-text-primary: #e8eaed;
+  --color-text-secondary: #a0a0a0;
+  --color-success: #4CAF50;
+  --color-warning: #FFA726;
+  --color-danger: #FF6B6B;
+  --color-gold: #FFD700;
+  --color-silver: #C0C0C0;
+  --color-bronze: #CD7F32;
+}
+
+/* Base styles */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: #1a1a2e;
+  color: var(--color-text-primary);
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+html.sidepanel,
+html.sidepanel body,
+html.sidepanel #root {
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0f3460;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Animations */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Gradient text for special elements */
+.gradient-text {
+  background: linear-gradient(135deg, #007990, #00a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Remove inconsistent white focus shadows across AntD controls */
+.ant-btn:focus,
+.ant-btn:focus-visible,
+.ant-btn:active,
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-number-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Keep icon/text buttons transparent on hover/active */
+.ant-btn-variant-text,
+.ant-btn-variant-text:hover,
+.ant-btn-variant-text:focus,
+.ant-btn-variant-text:active,
+.ant-btn-color-dangerous.ant-btn-variant-text,
+.ant-btn-color-dangerous.ant-btn-variant-text:hover,
+.ant-btn-color-dangerous.ant-btn-variant-text:focus,
+.ant-btn-color-dangerous.ant-btn-variant-text:active {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ranking-hours-tag {
+  background-color: #007990 !important;
+  color: var(--color-text-primary) !important;
+}
+
+.mr-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 2px 8px !important;
+  border-radius: 12px !important;
+}
+
+.mr-tag__icon {
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.mr-tag--opened {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+  color: #4ade80 !important;
+  border: 1px solid rgba(34, 197, 94, 0.2) !important;
+}
+
+.mr-tag--merged {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+  color: #7dd3fc !important;
+  border: 1px solid rgba(56, 189, 248, 0.2) !important;
+}
+
+.mr-tag--closed {
+  background-color: rgba(148, 163, 184, 0.15) !important;
+  color: #94a3b8 !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+}
+
+.mr-tag--conflict {
+  background-color: rgba(255, 107, 107, 0.15) !important;
+  color: #ff6b6b !important;
+  border: 1px solid rgba(255, 107, 107, 0.2) !important;
+}
+
+.mr-tag--danger {
+  background-color: rgba(255, 107, 107, 0.15) !important;
+  color: #ff6b6b !important;
+  border: 1px solid rgba(255, 107, 107, 0.2) !important;
+}
+
+.mr-tag--warning {
+  background-color: rgba(255, 167, 38, 0.15) !important;
+  color: #FFA726 !important;
+  border: 1px solid rgba(255, 167, 38, 0.2) !important;
+}
+
+.otp-statistic-accent .ant-statistic-content {
+  color: #00a3b8 !important;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.remove-confirm-button {
+  box-shadow: none !important;
+  background-color: #ff6b6b !important;
+  border-color: #ff6b6b !important;
+  color: var(--color-text-primary) !important;
+  font-weight: 600;
+}
+
+.member-card .ant-card-body {
+  padding: 20px !important;
+}
+
+.rank-1 {
+  border-color: #ffd700 !important;
+  background: linear-gradient(to bottom right, #16213e, rgba(255, 215, 0, 0.1)) !important;
+}
+
+.rank-2 {
+  border-color: #c0c0c0 !important;
+  background: linear-gradient(to bottom right, #16213e, rgba(192, 192, 192, 0.1)) !important;
+}
+
+.rank-3 {
+  border-color: #cd7f32 !important;
+  background: linear-gradient(to bottom right, #16213e, rgba(205, 127, 50, 0.1)) !important;
+}
+
+/* Glass Select — default = form radius; compact header uses .glass-select--pill */
+.glass-select.ant-select {
+  min-width: 0;
+}
+
+.glass-select .ant-select-selector {
+  border-radius: 10px !important;
+  background: rgba(15, 52, 96, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease !important;
+}
+
+.glass-select--pill.ant-select {
+  min-width: 150px;
+}
+
+.glass-select--pill .ant-select-selector {
+  border-radius: 999px !important;
+}
+
+.glass-select:hover .ant-select-selector {
+  background: rgba(15, 52, 96, 0.72) !important;
+  border-color: rgba(0, 163, 184, 0.45) !important;
+}
+
+/* Higher specificity than the global ant-select focus reset above */
+.glass-select.ant-select-focused .ant-select-selector,
+.glass-select.ant-select-open .ant-select-selector {
+  border-color: var(--color-accent-light) !important;
+  box-shadow: 0 0 0 3px rgba(0, 121, 144, 0.28) !important;
+  background: rgba(15, 52, 96, 0.8) !important;
+}
+
+.glass-select .ant-select-selection-item {
+  color: var(--color-text-primary) !important;
+  font-weight: 500;
+}
+
+.glass-select .ant-select-arrow,
+.glass-select .ant-select-suffix {
+  color: var(--color-text-primary) !important;
+  opacity: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.glass-select .glass-select-arrow-icon {
+  display: block;
+  color: var(--color-text-primary) !important;
+  opacity: 1 !important;
+}
+
+.glass-select .glass-select-arrow-icon path {
+  stroke: currentColor !important;
+}
+
+.glass-select.ant-select-open .glass-select-arrow-icon,
+.glass-select:hover .glass-select-arrow-icon {
+  color: var(--color-text-primary) !important;
+}
+
+.glass-select-dropdown.ant-select-dropdown {
+  border-radius: 14px !important;
+  background: rgba(22, 33, 62, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(12px);
+  padding: 6px !important;
+  overflow: hidden;
+}
+
+/* Default form options match controlHeight (40px) */
+.glass-select-dropdown .ant-select-item {
+  border-radius: 8px !important;
+  color: var(--color-text-primary) !important;
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 12px !important;
+  margin-bottom: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  line-height: 1.3 !important;
+}
+
+/* Compact header/period dropdown */
+.glass-select-dropdown--compact .ant-select-item {
+  min-height: 32px !important;
+  height: 32px !important;
+}
+
+.glass-select-dropdown .ant-select-item-option-content {
+  line-height: 1.3 !important;
+}
+
+.glass-select-dropdown .ant-select-item:last-child {
+  margin-bottom: 0 !important;
+}
+
+.glass-select-dropdown .ant-select-item-option-active {
+  background: rgba(0, 121, 144, 0.14) !important;
+}
+
+.glass-select-dropdown .ant-select-item-option-selected {
+  background: rgba(0, 121, 144, 0.28) !important;
+  color: var(--color-accent-light) !important;
+  font-weight: 600 !important;
+}
+
+.member-statistic .ant-statistic-content {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.perf-sort-card .ant-card-body {
+  padding: 12px 20px !important;
+}
+
+.feature-icon {
+  font-size: 22px;
+  color: #00a3b8;
+}
+
+.feature-icon-lg {
+  font-size: 40px;
+}
+
+.coming-soon-icon-bg {
+  background: linear-gradient(135deg, rgba(0, 121, 144, 0.15), rgba(0, 163, 184, 0.25));
+}
+
+.coming-soon-feature-card .ant-card-body {
+  padding: 24px 16px !important;
+}
+
+.feature-icon-box {
+  background: rgba(0, 121, 144, 0.15);
+}

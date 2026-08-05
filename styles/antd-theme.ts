@@ -1,0 +1,115 @@
+import type { ThemeConfig } from 'antd'
+
+export const antdTheme: ThemeConfig = {
+  token: {
+    colorPrimary: '#007990',
+    colorPrimaryHover: '#00a3b8',
+    colorPrimaryActive: '#006578',
+    colorBgBase: '#1a1a2e',
+    colorBgContainer: '#16213e',
+    colorBgElevated: '#0f3460',
+    colorBgLayout: '#1a1a2e',
+    colorFillSecondary: 'rgba(255, 255, 255, 0.08)',
+    colorFillTertiary: 'rgba(255, 255, 255, 0.12)',
+    colorSplit: 'rgba(255, 255, 255, 0.1)',
+    colorBorder: 'rgba(255, 255, 255, 0.1)',
+    colorBorderSecondary: 'rgba(255, 255, 255, 0.06)',
+    colorText: '#e8eaed',
+    colorTextSecondary: '#a0a0a0',
+    colorTextTertiary: '#a0a0a0',
+    colorTextLightSolid: '#e8eaed',
+    colorTextPlaceholder: '#a0a0a0',
+    colorSuccess: '#4CAF50',
+    colorWarning: '#FFA726',
+    colorError: '#FF6B6B',
+    colorLink: '#00a3b8',
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif",
+    borderRadius: 8,
+    borderRadiusLG: 12,
+    controlHeight: 40,
+  },
+  components: {
+    Layout: {
+      siderBg: '#0d1b2a',
+      headerBg: '#1a1a2e',
+      bodyBg: '#1a1a2e',
+    },
+    Menu: {
+      darkItemBg: '#0d1b2a',
+      darkItemSelectedBg: 'rgba(0, 121, 144, 0.2)',
+      darkItemSelectedColor: '#00a3b8',
+      darkItemColor: '#a0a0a0',
+      darkItemHoverColor: '#e8eaed',
+      darkItemHoverBg: '#0f3460',
+    },
+    Card: {
+      colorBgContainer: '#16213e',
+      colorBorderSecondary: 'rgba(255, 255, 255, 0.1)',
+    },
+    Input: {
+      colorBgContainer: '#0f3460',
+      activeBorderColor: '#007990',
+      hoverBorderColor: '#007990',
+      activeShadow: '0 0 0 3px rgba(0, 121, 144, 0.2)',
+    },
+    InputNumber: {
+      colorBgContainer: '#0f3460',
+      activeBorderColor: '#007990',
+      hoverBorderColor: '#007990',
+      activeShadow: '0 0 0 3px rgba(0, 121, 144, 0.2)',
+    },
+    Select: {
+      colorBgContainer: '#0f3460',
+      colorBgElevated: '#16213e',
+      optionSelectedBg: 'rgba(0, 121, 144, 0.2)',
+      optionActiveBg: 'rgba(0, 121, 144, 0.12)',
+    },
+    Button: {
+      primaryShadow: 'none',
+      dangerShadow: 'none',
+      defaultShadow: 'none',
+      defaultBg: '#0f3460',
+      defaultColor: '#e8eaed',
+      defaultBorderColor: 'rgba(255, 255, 255, 0.1)',
+      textTextColor: '#e8eaed',
+      textHoverBg: 'rgba(255, 255, 255, 0.08)',
+      dangerColor: '#ff7d7d',
+      colorError: '#ff7d7d',
+      colorErrorHover: '#ff9a9a',
+      colorErrorActive: '#ff6b6b',
+    },
+    Progress: {
+      defaultColor: '#007990',
+    },
+    Spin: {
+      colorPrimary: '#007990',
+    },
+    DatePicker: {
+      colorBgContainer: '#0f3460',
+      colorBgElevated: '#16213e',
+      activeBorderColor: '#007990',
+      hoverBorderColor: '#007990',
+      activeShadow: '0 0 0 3px rgba(0, 121, 144, 0.2)',
+    },
+    Tag: {
+      defaultBg: '#0f3460',
+      defaultColor: '#e8eaed',
+    },
+    Statistic: {
+      contentFontSize: 24,
+    },
+    Result: {
+      colorInfo: '#007990',
+    },
+    Popover: {
+      colorBgElevated: '#163d70',
+    },
+    Tooltip: {
+      colorBgSpotlight: '#163d70',
+    },
+    Message: {
+      contentBg: '#163d70',
+      colorText: '#e8eaed',
+    },
+  },
+}
