@@ -9,7 +9,7 @@
 </p>
 
 **GitHub:** [TaiNgo6798/redlab](https://github.com/TaiNgo6798/redlab)  
-**Privacy policy:** [redlab.vercel.app](https://redlab.vercel.app/privacy-policy.html)
+**Privacy policy:** [pitogram.cc/policies/privacy](https://pitogram.cc/policies/privacy)
 
 ## Supported platforms
 
@@ -92,7 +92,7 @@ sidepanel  ──messages──▶  background service worker  ──▶  Redmin
 
 ## Privacy
 
-Credentials and caches stay on your device. See [privacy-policy.html](./privacy-policy.html) or the [hosted policy](https://redlab.vercel.app/privacy-policy.html).
+Credentials and caches stay on your device. See the [privacy policy](https://pitogram.cc/policies/privacy).
 
 ## License
 
