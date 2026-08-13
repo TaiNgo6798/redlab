@@ -4,8 +4,32 @@ export type ViewName = 'overview' | 'settings' | 'otp' | 'ticket-sync'
 export type ShowState = 'notConfigured' | 'needsPermission' | 'error' | 'loading' | 'main'
 export type StatusType = 'loading' | 'success' | 'error'
 export type ConnectionStatus = { message: string; type: StatusType }
-/** Structured error from background getStats / similar. */
 export type StatsErrorKind = 'not_configured' | 'permission' | 'other'
+export type BadgeTimeScope = 'today' | 'week' | 'month'
+
+export interface Settings {
+  redmineUrl: string
+  redmineApiKey: string
+  gitlabUrl: string
+  gitlabToken: string
+  badgeDisplayType: DisplayType
+  rankingDisplayType: DisplayType
+  badgeTimeScope: BadgeTimeScope
+  hoursPerDay: number
+  projectId: string | null
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  redmineUrl: '',
+  redmineApiKey: '',
+  gitlabUrl: '',
+  gitlabToken: '',
+  badgeDisplayType: 'logged',
+  rankingDisplayType: 'logged',
+  badgeTimeScope: 'month',
+  hoursPerDay: 6.5,
+  projectId: null,
+}
 
 export interface OverviewSettings {
   badgeDisplayType: DisplayType

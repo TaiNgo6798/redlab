@@ -13,19 +13,8 @@ export default defineConfig({
   ],
   build: {
     emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
-              return 'vendor-react';
-            }
-            if (id.includes('antd') || id.includes('@ant-design/icons')) {
-              return 'vendor-antd';
-            }
-          }
-        },
-      },
-    },
+    // Chrome extensions reject chrome-extension:// modulepreload (cross-world).
+    // Splitting React/antd also made a circular chunk and broke useLayoutEffect.
+    modulePreload: false,
   },
 })

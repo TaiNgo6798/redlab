@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { OtpCode, OtpStatusType } from '../types/index'
+
+export type OtpStatusType = 'error' | 'success'
+
+export interface OtpCode {
+  id: string
+  name: string
+  secret: string
+  code: string
+}
 
 export function useOtpManager() {
   const [name, setName] = useState('')

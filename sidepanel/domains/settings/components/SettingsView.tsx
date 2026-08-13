@@ -4,7 +4,7 @@ import { Button, Input, InputNumber, Statistic, Typography } from 'antd'
 import { DownloadOutlined, EyeInvisibleOutlined, EyeOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
 import { GlassSelect } from '../../../shared/components/GlassSelect'
 import { PanelCard } from '../../../shared/components/PanelCard'
-import type { SettingsViewProps } from '../types/index'
+import type { ConnectionStatus, RedmineProject, Settings } from '../../../shared/types/index'
 
 const { Text } = Typography
 
@@ -30,7 +30,39 @@ function FieldHelp({ error, children }: { error?: string; children: ReactNode })
   return <Text type="secondary" className="mt-1.5 block text-xs">{children}</Text>
 }
 
-export function SettingsView({ settings, projects, onSettingsChange, onTestConnection, onTestGitlabConnection, onUrlBlur, onRedmineApiKeyBlur, onGitlabUrlBlur, onGitlabTokenBlur, onExportSettings, onImportSettings, redmineConnectionStatus, gitlabConnectionStatus, saveStatus, validationErrors }: SettingsViewProps) {
+export function SettingsView({
+  settings,
+  projects,
+  onSettingsChange,
+  onTestConnection,
+  onTestGitlabConnection,
+  onUrlBlur,
+  onRedmineApiKeyBlur,
+  onGitlabUrlBlur,
+  onGitlabTokenBlur,
+  onExportSettings,
+  onImportSettings,
+  redmineConnectionStatus,
+  gitlabConnectionStatus,
+  saveStatus,
+  validationErrors,
+}: {
+  settings: Settings
+  projects: RedmineProject[]
+  onSettingsChange: (updates: Partial<Settings>) => void
+  onTestConnection: () => void
+  onTestGitlabConnection: () => void
+  onUrlBlur: () => void
+  onRedmineApiKeyBlur: () => void
+  onGitlabUrlBlur: () => void
+  onGitlabTokenBlur: () => void
+  onExportSettings: () => void
+  onImportSettings: (file: File) => Promise<void>
+  redmineConnectionStatus: ConnectionStatus
+  gitlabConnectionStatus: ConnectionStatus
+  saveStatus: ConnectionStatus
+  validationErrors: Record<string, string>
+}) {
   const [redmineApiKeyVisible, setRedmineApiKeyVisible] = useState(false)
   const [gitlabTokenVisible, setGitlabTokenVisible] = useState(false)
   const projectOptions = useMemo(() => projects.map(p => ({ label: p.name, value: p.id.toString() })), [projects])

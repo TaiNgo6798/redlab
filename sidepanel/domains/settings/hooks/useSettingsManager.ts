@@ -5,17 +5,64 @@ import {
   hasOriginPermission,
   revokeOriginPermission,
 } from '../../../../utils/permissions'
-import type { ConnectionStatus, StatusType } from '../../../shared/types/index'
-import { DEFAULT_SETTINGS } from '../consts/defaultSettings'
-import type { Settings, SettingsFormData } from '../types/index'
-import { settingsSchema } from '../utils/schema'
-import { serializeSettings } from '../utils/serializeSettings'
+import {
+  DEFAULT_SETTINGS,
+  type ConnectionStatus,
+  type Settings,
+  type StatusType,
+} from '../../../shared/types/index'
 
 type FieldErrors = Record<string, string>
 
 const EMPTY_STATUS: ConnectionStatus = { message: '', type: 'loading' }
 
-function toFormData(saved: Partial<Settings>): SettingsFormData {
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function urlError(value: string): string | null {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:') return 'URL must start with https://'
+    return null
+  } catch {
+    return 'Please enter a valid URL'
+  }
+}
+
+export function validateSettings(data: Settings): { ok: true; data: Settings } | { ok: false; errors: FieldErrors } {
+  const redmineUrl = data.redmineUrl.trim().replace(/\/$/, '')
+  const redmineApiKey = data.redmineApiKey.trim()
+  const gitlabUrl = data.gitlabUrl.trim().replace(/\/$/, '')
+  const gitlabToken = data.gitlabToken.trim()
+  const errors: FieldErrors = {}
+
+  if (!redmineUrl) errors.redmineUrl = 'API URL is required'
+  else {
+    const err = urlError(redmineUrl)
+    if (err) errors.redmineUrl = err
+  }
+  if (!redmineApiKey) errors.redmineApiKey = 'API Key is required'
+  if (gitlabUrl) {
+    const err = urlError(gitlabUrl)
+    if (err) errors.gitlabUrl = err
+  }
+  if (data.hoursPerDay < 1) errors.hoursPerDay = 'Minimum 1 hour per day'
+  else if (data.hoursPerDay > 24) errors.hoursPerDay = 'Maximum 24 hours per day'
+
+  if (Object.keys(errors).length) return { ok: false, errors }
+  return {
+    ok: true,
+    data: { ...data, redmineUrl, redmineApiKey, gitlabUrl, gitlabToken },
+  }
+}
+
+function toFormData(saved: Partial<Settings>): Settings {
   return {
     redmineUrl: saved.redmineUrl || '',
     redmineApiKey: saved.redmineApiKey || '',
@@ -29,23 +76,22 @@ function toFormData(saved: Partial<Settings>): SettingsFormData {
   }
 }
 
-function fieldErrorsFromZod(error: { issues: { path: PropertyKey[]; message: string }[] }): FieldErrors {
-  const errs: FieldErrors = {}
-  for (const issue of error.issues) {
-    const key = String(issue.path[0] ?? '')
-    if (key && !errs[key]) errs[key] = issue.message
-  }
-  return errs
-}
-
-function validateSettings(data: SettingsFormData): { ok: true; data: Settings } | { ok: false; errors: FieldErrors } {
-  const result = settingsSchema.safeParse(data)
-  if (result.success) return { ok: true, data: result.data }
-  return { ok: false, errors: fieldErrorsFromZod(result.error) }
+function serializeSettings(s: Settings): string {
+  return JSON.stringify({
+    redmineUrl: s.redmineUrl.trim().replace(/\/$/, ''),
+    redmineApiKey: s.redmineApiKey.trim(),
+    gitlabUrl: s.gitlabUrl.trim().replace(/\/$/, ''),
+    gitlabToken: s.gitlabToken.trim(),
+    badgeDisplayType: s.badgeDisplayType,
+    rankingDisplayType: s.rankingDisplayType,
+    badgeTimeScope: s.badgeTimeScope,
+    hoursPerDay: s.hoursPerDay,
+    projectId: s.projectId,
+  })
 }
 
 export function useSettingsManager() {
-  const [settings, setSettings] = useState<SettingsFormData>(DEFAULT_SETTINGS)
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [projects, setProjects] = useState<RedmineProject[]>([])
   const [redmineConnectionStatus, setRedmineConnectionStatus] = useState<ConnectionStatus>(EMPTY_STATUS)
   const [gitlabConnectionStatus, setGitlabConnectionStatus] = useState<ConnectionStatus>(EMPTY_STATUS)
@@ -57,7 +103,6 @@ export function useSettingsManager() {
   const previousGitlabUrl = useRef('')
   const serializedSettingsRef = useRef('')
   const isSavingRef = useRef(false)
-  // Always read latest settings inside async callbacks without re-creating them.
   const settingsRef = useRef(settings)
   settingsRef.current = settings
 
@@ -88,7 +133,7 @@ export function useSettingsManager() {
     initialLoadComplete.current = true
   }, [])
 
-  const saveSettingsData = useCallback(async (data: SettingsFormData = settingsRef.current) => {
+  const saveSettingsData = useCallback(async (data: Settings = settingsRef.current) => {
     if (isSavingRef.current) return false
     isSavingRef.current = true
 
@@ -118,8 +163,8 @@ export function useSettingsManager() {
   }, [flashSave])
 
   const testConnection = useCallback(async () => {
-    const redmineUrl = settingsRef.current.redmineUrl?.trim().replace(/\/$/, '') || ''
-    const redmineApiKey = settingsRef.current.redmineApiKey?.trim() || ''
+    const redmineUrl = settingsRef.current.redmineUrl.trim().replace(/\/$/, '') || ''
+    const redmineApiKey = settingsRef.current.redmineApiKey.trim() || ''
     if (!redmineUrl || !redmineApiKey) {
       setRedmineConnectionStatus({ message: 'Please enter URL and API key', type: 'error' })
       return
@@ -141,8 +186,8 @@ export function useSettingsManager() {
   }, [])
 
   const testGitlabConnection = useCallback(async () => {
-    const gitlabUrl = settingsRef.current.gitlabUrl?.trim().replace(/\/$/, '') || ''
-    const gitlabToken = settingsRef.current.gitlabToken?.trim() || ''
+    const gitlabUrl = settingsRef.current.gitlabUrl.trim().replace(/\/$/, '') || ''
+    const gitlabToken = settingsRef.current.gitlabToken.trim() || ''
     if (!gitlabUrl || !gitlabToken) {
       setGitlabConnectionStatus({ message: 'Please enter URL and token', type: 'error' })
       return
@@ -166,17 +211,16 @@ export function useSettingsManager() {
     }
   }, [])
 
-  const handleSettingsChange = useCallback((updates: Partial<SettingsFormData>) => {
+  const handleSettingsChange = useCallback((updates: Partial<Settings>) => {
     setSettings(prev => ({ ...prev, ...updates }))
   }, [])
 
   const handleUrlBlur = useCallback(async () => {
     const data = settingsRef.current
-    const newUrl = data.redmineUrl?.trim().replace(/\/$/, '') || ''
+    const newUrl = data.redmineUrl.trim().replace(/\/$/, '') || ''
     if (!newUrl || newUrl === previousUrl.current) return
 
-    const field = settingsSchema.shape.redmineUrl.safeParse(data.redmineUrl)
-    if (field.success) {
+    if (isHttpsUrl(newUrl)) {
       const granted = await ensureOriginPermission(newUrl)
       if (!granted) flashSave('Permission denied — grant access to enable syncing', 'error', 3000)
       if (previousUrl.current) {
@@ -192,20 +236,19 @@ export function useSettingsManager() {
 
   const handleGitlabUrlBlur = useCallback(async () => {
     const data = settingsRef.current
-    const newUrl = data.gitlabUrl?.trim().replace(/\/$/, '') || ''
+    const newUrl = data.gitlabUrl.trim().replace(/\/$/, '') || ''
     if (newUrl === previousGitlabUrl.current) return
 
     let canSave = true
     if (newUrl) {
-      try {
-        new URL(newUrl)
+      if (!isHttpsUrl(newUrl)) {
+        canSave = false
+      } else {
         const granted = await ensureOriginPermission(newUrl)
         if (!granted) {
           flashSave('Permission denied — grant access to enable GitLab syncing', 'error', 3000)
           canSave = false
         }
-      } catch {
-        canSave = false
       }
     }
 
@@ -225,14 +268,13 @@ export function useSettingsManager() {
     void loadSettings()
   }, [loadSettings])
 
-  // Auto-save non-URL fields after a short debounce.
   useEffect(() => {
     if (!initialLoadComplete.current) return
     const currentSerialized = serializeSettings(settings)
     if (currentSerialized === serializedSettingsRef.current) return
 
     const timeoutId = setTimeout(() => {
-      const newUrl = settings.redmineUrl?.trim().replace(/\/$/, '') || ''
+      const newUrl = settings.redmineUrl.trim().replace(/\/$/, '') || ''
       const urlChanged = newUrl !== previousUrl.current && newUrl !== ''
       if (!urlChanged) void saveSettingsData(settings)
     }, 500)
@@ -243,9 +285,9 @@ export function useSettingsManager() {
   const exportSettings = useCallback(async () => {
     try {
       const saved = await chrome.storage.sync.get(DEFAULT_SETTINGS) as Settings
-      const result = await chrome.runtime.sendMessage({ action: 'exportOtpAuthenticators' }) as any
+      const result = await chrome.runtime.sendMessage({ action: 'exportOtpAuthenticators' }) as { items?: { name: string; secret: string }[] }
       const otpItems = Array.isArray(result?.items)
-        ? result.items.map((item: any) => ({ name: item.name, secret: item.secret }))
+        ? result.items.map((item) => ({ name: item.name, secret: item.secret }))
         : []
 
       const json = JSON.stringify({ ...saved, otpAuthenticators: otpItems }, null, 2)
@@ -266,21 +308,24 @@ export function useSettingsManager() {
 
   const importSettings = useCallback(async (file: File) => {
     try {
-      const text = await file.text()
-      const json = JSON.parse(text)
-      const validSettings = settingsSchema.parse(json)
+      const json = JSON.parse(await file.text()) as Partial<Settings> & { otpAuthenticators?: unknown }
+      const validated = validateSettings(toFormData(json))
+      if (!validated.ok) {
+        flashSave('Invalid settings file format', 'error', 3000)
+        return
+      }
 
       if (Array.isArray(json.otpAuthenticators) && json.otpAuthenticators.length > 0) {
         await chrome.runtime.sendMessage({ action: 'importOtpAuthenticators', items: json.otpAuthenticators })
       }
 
-      await chrome.storage.sync.set(validSettings)
-      setSettings(validSettings)
+      await chrome.storage.sync.set(validated.data)
+      setSettings(validated.data)
       setValidationErrors({})
-      previousUrl.current = validSettings.redmineUrl || ''
-      previousGitlabUrl.current = validSettings.gitlabUrl || ''
-      serializedSettingsRef.current = serializeSettings(validSettings)
-      settingsRef.current = validSettings
+      previousUrl.current = validated.data.redmineUrl || ''
+      previousGitlabUrl.current = validated.data.gitlabUrl || ''
+      serializedSettingsRef.current = serializeSettings(validated.data)
+      settingsRef.current = validated.data
 
       flashSave('Settings imported successfully!', 'success', 3000)
       void chrome.runtime.sendMessage({ action: 'updateBadge' })

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ShowState } from '../../../shared/types/index'
 import type { TicketGroup } from '../types/index'
-import { fetchAndProcessTickets, ticketStateKey } from '../../../../utils/ticketSyncEngine'
+import { fetchAndProcessTickets } from '../../../../utils/ticketSyncEngine'
+import { ticketStateKey } from '../../../../utils/ticketSyncRules'
 import { hasOriginPermission, permissionErrorMessage } from '../../../../utils/permissions'
 
 export function useTicketSync() {

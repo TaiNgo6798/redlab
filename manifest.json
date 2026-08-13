@@ -3,7 +3,7 @@
   "name": "RedLab",
   "short_name": "RedLab",
   "description": "Redmine time tracking, team leaderboards, GitLab ticket sync, and OTP codes.",
-  "version": "1.1.39",
+  "version": "1.1.40",
   "permissions": [
     "storage",
     "alarms",

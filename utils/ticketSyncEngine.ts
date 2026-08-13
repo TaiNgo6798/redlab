@@ -11,8 +11,6 @@ import {
 import { PROBLEM_RULES } from './ticketSyncRules';
 import type { ProcessedTicket, ProcessedMR, TicketEvaluation, TicketGroup } from '../sidepanel/domains/ticket-sync/types/index';
 
-export { ticketStateKey } from './ticketSyncRules';
-
 export const GROUP_CONFIG: { key: TicketEvaluation; label: string; description?: string }[] = [
   { key: 'ready', label: 'Ready to Test', description: 'Tickets are set as Resolved and MRs are merged' },
   { key: 'conflicts', label: 'Has Conflicts' },

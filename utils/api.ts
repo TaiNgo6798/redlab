@@ -425,25 +425,14 @@ export async function getMRLatestPipelineStatus(
   return pipelines[0]?.status ?? null
 }
 
-export async function checkMRDiscussions(
-  gitlabUrl: string,
-  gitlabToken: string,
-  projectId: number,
-  mrIid: number,
+/** Unanswered review. Approved MRs are done — ignore leftover comments. */
+export function hasOpenReview(
+  discussions: GitlabDiscussion[],
   currentUserId: number,
-): Promise<boolean> {
-  if (!isBackground) {
-    return apiCall<boolean>('checkMRDiscussions', [gitlabUrl, gitlabToken, projectId, mrIid, currentUserId])
-  }
+  approved = false,
+): boolean {
+  if (approved) return false
 
-  const response = await freshFetch(
-    `${gitlabUrl}/api/v4/projects/${projectId}/merge_requests/${mrIid}/discussions?per_page=100`,
-    { headers: { 'PRIVATE-TOKEN': gitlabToken } },
-  )
-
-  if (!response.ok) return false
-
-  const discussions = ((await response.json()) as GitlabDiscussion[]) || []
   let latestReviewerCommentTime = 0
   let latestAuthorActivityTime = 0
 
@@ -472,6 +461,41 @@ export async function checkMRDiscussions(
   }
 
   return latestReviewerCommentTime > latestAuthorActivityTime
+}
+
+export async function checkMRDiscussions(
+  gitlabUrl: string,
+  gitlabToken: string,
+  projectId: number,
+  mrIid: number,
+  currentUserId: number,
+): Promise<boolean> {
+  if (!isBackground) {
+    return apiCall<boolean>('checkMRDiscussions', [gitlabUrl, gitlabToken, projectId, mrIid, currentUserId])
+  }
+
+  const headers = { 'PRIVATE-TOKEN': gitlabToken }
+  const [response, approvalsRes] = await Promise.all([
+    freshFetch(
+      `${gitlabUrl}/api/v4/projects/${projectId}/merge_requests/${mrIid}/discussions?per_page=100`,
+      { headers },
+    ),
+    freshFetch(
+      `${gitlabUrl}/api/v4/projects/${projectId}/merge_requests/${mrIid}/approvals`,
+      { headers },
+    ),
+  ])
+
+  if (!response.ok) return false
+
+  let approved = false
+  if (approvalsRes.ok) {
+    const approvals = (await approvalsRes.json()) as { approved?: boolean }
+    approved = Boolean(approvals.approved)
+  }
+
+  const discussions = ((await response.json()) as GitlabDiscussion[]) || []
+  return hasOpenReview(discussions, currentUserId, approved)
 }
 
 export async function getOtherUserMRs(

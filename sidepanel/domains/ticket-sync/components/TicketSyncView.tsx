@@ -1,5 +1,5 @@
 import { Button, Spin, Tag, Typography, Progress } from 'antd'
-import { ExclamationCircleOutlined, SettingOutlined } from '@ant-design/icons'
+import { ExclamationCircleOutlined, SettingOutlined, SyncOutlined } from '@ant-design/icons'
 import { PanelCard } from '../../../shared/components/PanelCard'
 import type { ProcessedTicket, TicketGroup, TicketEvaluation } from '../types/index'
 import type { ShowState } from '../../../shared/types/index'
@@ -257,6 +257,11 @@ export function TicketSyncView({ groups, showState, isSyncing, syncProgress, err
 
       {showState === 'main' && (
         <>
+          {!isSyncing && (
+            <div className="flex justify-end">
+              <Button type="text" size="small" icon={<SyncOutlined />} onClick={onRefresh} title="Sync" />
+            </div>
+          )}
           {isSyncing && (
             <div className="mb-4 flex flex-col">
               <div className="mb-1 flex justify-between text-xs text-text-secondary">

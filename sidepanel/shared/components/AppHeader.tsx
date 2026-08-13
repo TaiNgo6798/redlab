@@ -1,11 +1,9 @@
 import { Button } from 'antd'
-import { BranchesOutlined, KeyOutlined, SettingOutlined, SyncOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import { BranchesOutlined, KeyOutlined, SettingOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import type { ViewName } from '../types/index'
 
 interface AppHeaderProps {
   view: ViewName
-  isSyncing: boolean
-  onSync: () => void
   onOpenOverview: () => void
   onOpenSettings: () => void
   onOpenOtp: () => void
@@ -19,7 +17,7 @@ const VIEW_TITLES: Record<ViewName, string> = {
   'ticket-sync': 'Ticket Sync',
 }
 
-export function AppHeader({ view, isSyncing, onSync, onOpenOverview, onOpenSettings, onOpenOtp, onOpenTicketSync }: AppHeaderProps) {
+export function AppHeader({ view, onOpenOverview, onOpenSettings, onOpenOtp, onOpenTicketSync }: AppHeaderProps) {
   return (
     <header className="mb-3 flex items-center justify-between border-b border-white/10 pb-2">
       <div className="flex min-w-0 items-center gap-2">
@@ -34,9 +32,6 @@ export function AppHeader({ view, isSyncing, onSync, onOpenOverview, onOpenSetti
         </div>
       </div>
       <div className="flex items-center gap-1">
-        {(view === 'overview' || view === 'ticket-sync') && (
-          <Button type="text" size="small" icon={<SyncOutlined spin={isSyncing} />} onClick={onSync} title="Sync" />
-        )}
         <Button type={view === 'overview' ? 'primary' : 'text'} size="small" icon={<ClockCircleOutlined />} onClick={onOpenOverview} title="Time Log" />
         <Button type={view === 'ticket-sync' ? 'primary' : 'text'} size="small" icon={<BranchesOutlined />} onClick={onOpenTicketSync} title="Ticket Sync" />
         <Button type={view === 'otp' ? 'primary' : 'text'} size="small" icon={<KeyOutlined />} onClick={onOpenOtp} title="OTP Resolver" />

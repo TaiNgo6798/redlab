@@ -17,57 +17,21 @@ import {
   getOtherUserMRs,
   buildRanking,
   type TimeScope,
-  type DisplayType,
   type UserHours,
 } from './utils/api';
-import { Authenticator } from '@otplib/core';
-import { createDigest } from '@otplib/plugin-crypto-js';
-import { keyDecoder, keyEncoder } from '@otplib/plugin-thirty-two';
-import { Buffer } from 'buffer/';
-import { fetchAndProcessTickets, ticketStateKey } from './utils/ticketSyncEngine';
+import { fetchAndProcessTickets } from './utils/ticketSyncEngine';
+import { ticketStateKey } from './utils/ticketSyncRules';
 import {
   hasOriginPermission,
   permissionErrorMessage,
 } from './utils/permissions';
-
-;(globalThis as unknown as { Buffer?: typeof Buffer | undefined }).Buffer = Buffer;
-
-// ============== Types ==============
-
-interface Settings {
-  redmineUrl: string;
-  redmineApiKey: string;
-  gitlabUrl: string;
-  gitlabToken: string;
-  badgeDisplayType: DisplayType;
-  rankingDisplayType: DisplayType;
-  badgeTimeScope: TimeScope;
-  hoursPerDay: number;
-  projectId: string | null;
-}
-
-type StatsErrorKind = 'not_configured' | 'permission' | 'other';
-
-interface Stats {
-  user: {
-    id: number;
-    login: string;
-    name: string;
-  };
-  loggedHours: number;
-  expectedHours: number;
-  remainingHours: number;
-  todayLoggedHours: number;
-  ranking: UserHours[];
-  settings: Settings & { rankingExpectedHours: number };
-  error?: string;
-  errorKind?: StatsErrorKind;
-}
-
-interface CachedStats {
-  lastSyncedAt: number;
-  stats: Stats;
-}
+import { generateTotp, OTP_STEP_SECONDS } from './utils/totp';
+import {
+  DEFAULT_SETTINGS,
+  type CachedStats,
+  type Settings,
+  type Stats,
+} from './sidepanel/shared/types/index';
 
 interface OtpAuthenticator {
   id: string;
@@ -75,38 +39,8 @@ interface OtpAuthenticator {
   secret: string;
 }
 
-interface OtpCode {
-  id: string;
-  name: string;
-  secret: string;
-  code: string;
-}
-
-// ============== Constants ==============
-
-const DEFAULT_SETTINGS: Settings = {
-  redmineUrl: '',
-  redmineApiKey: '',
-  gitlabUrl: '',
-  gitlabToken: '',
-  badgeDisplayType: 'logged', // 'logged' or 'remaining' - for badge
-  rankingDisplayType: 'logged', // 'logged' or 'remaining' - for ranking
-  badgeTimeScope: 'month', // 'today', 'week', 'month' - for badge display
-  hoursPerDay: 6.5,
-  projectId: null
-};
-
-// Update interval in minutes
 const UPDATE_INTERVAL = 1;
 const OTP_STORAGE_KEY = 'otpAuthenticators';
-const OTP_STEP_SECONDS = 30;
-
-type OtpAuthenticatorGenerator = {
-  options: { step?: number; digits?: number };
-  generate: (secret: string) => string;
-};
-
-let otpAuthenticator: OtpAuthenticatorGenerator | null = null;
 
 // ============== Alarms ==============
 
@@ -377,7 +311,7 @@ async function getOtpAuthenticators(): Promise<OtpAuthenticator[]> {
   );
 }
 
-function parseOtpInput(name: string, secret: string): { ok: true; name: string; secret: string } | { ok: false; error: string } {
+async function parseOtpInput(name: string, secret: string): Promise<{ ok: true; name: string; secret: string } | { ok: false; error: string }> {
   const trimmedName = typeof name === 'string' ? name.trim() : '';
   const trimmedSecret = normalizeSecretInput(secret);
   if (!trimmedName || !trimmedSecret) {
@@ -385,18 +319,16 @@ function parseOtpInput(name: string, secret: string): { ok: true; name: string; 
   }
 
   try {
-    getOtpAuthenticator().generate(trimmedSecret);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '';
-    const invalidSecretError = /base32|secret|input|invalid/i.test(message);
-    return { ok: false, error: invalidSecretError ? 'Invalid secret format.' : 'Failed to generate OTP in background.' };
+    await generateTotp(trimmedSecret);
+  } catch {
+    return { ok: false, error: 'Invalid secret format.' };
   }
 
   return { ok: true, name: trimmedName, secret: trimmedSecret };
 }
 
 async function addOtpAuthenticator(name: string, secret: string): Promise<{ ok: boolean; error?: string }> {
-  const parsed = parseOtpInput(name, secret);
+  const parsed = await parseOtpInput(name, secret);
   if (!parsed.ok) return parsed;
 
   const current = await getOtpAuthenticators();
@@ -410,7 +342,7 @@ async function updateOtpAuthenticator(id: string, name: string, secret: string):
   const trimmedId = typeof id === 'string' ? id.trim() : '';
   if (!trimmedId) return { ok: false, error: 'Name and secret are required.' };
 
-  const parsed = parseOtpInput(name, secret);
+  const parsed = await parseOtpInput(name, secret);
   if (!parsed.ok) return parsed;
 
   const current = await getOtpAuthenticators();
@@ -446,7 +378,7 @@ async function importOtpAuthenticators(items: unknown): Promise<{ ok: boolean; e
     const secret = normalizeSecretInput(typeof item?.secret === 'string' ? item.secret : '');
     if (!name || !secret) continue;
     try {
-      getOtpAuthenticator().generate(secret);
+      await generateTotp(secret);
       normalized.push({ id: String(crypto.randomUUID()), name, secret });
     } catch {
       continue;
@@ -483,35 +415,21 @@ function normalizeSecretInput(rawSecret: string): string {
   return value.replace(/[\s-]+/g, '').toUpperCase();
 }
 
-async function getOtpCodes(): Promise<{ stepSeconds: number; generatedAt: number; codes: OtpCode[] }> {
-  const otp = getOtpAuthenticator();
+async function getOtpCodes(): Promise<{ stepSeconds: number; generatedAt: number; codes: { id: string; name: string; secret: string; code: string }[] }> {
   const authenticators = await getOtpAuthenticators();
-  const codes = authenticators.map((item) => {
+  const codes = await Promise.all(authenticators.map(async (item) => {
     try {
-      return { id: item.id, name: item.name, secret: item.secret, code: otp.generate(item.secret) };
+      return { id: item.id, name: item.name, secret: item.secret, code: await generateTotp(item.secret) };
     } catch {
       return { id: item.id, name: item.name, secret: item.secret, code: 'Invalid secret' };
     }
-  });
+  }));
 
   return {
     stepSeconds: OTP_STEP_SECONDS,
     generatedAt: Date.now(),
     codes,
   };
-}
-
-function getOtpAuthenticator(): OtpAuthenticatorGenerator {
-  if (otpAuthenticator) return otpAuthenticator;
-
-  const auth = new Authenticator({
-    createDigest,
-    keyDecoder,
-    keyEncoder,
-  });
-  auth.options = { step: OTP_STEP_SECONDS, digits: 6 };
-  otpAuthenticator = auth;
-  return otpAuthenticator;
 }
 
 /**
@@ -587,9 +505,13 @@ async function getStats(): Promise<Stats> {
       todayLoggedHours,
       ranking,
       settings: {
-        ...settings,
-        rankingExpectedHours
-      }
+        badgeDisplayType: settings.badgeDisplayType,
+        rankingDisplayType: settings.rankingDisplayType,
+        badgeTimeScope: settings.badgeTimeScope,
+        rankingExpectedHours,
+        projectId: settings.projectId,
+        hoursPerDay: settings.hoursPerDay,
+      },
     };
 
     await saveCache(stats);

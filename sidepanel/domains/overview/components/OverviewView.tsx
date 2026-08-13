@@ -1,12 +1,10 @@
 import { Progress, Spin, Tag, Typography, Button } from 'antd'
-import { ExclamationCircleOutlined, LockOutlined, SettingOutlined } from '@ant-design/icons'
+import { ExclamationCircleOutlined, LockOutlined, SettingOutlined, SyncOutlined } from '@ant-design/icons'
 import { useMemo, useState } from 'react'
 import { GlassSelect } from '../../../shared/components/GlassSelect'
 import { PanelCard } from '../../../shared/components/PanelCard'
 import { formatHours, getTimeAgo } from '../../../shared/utils/time'
-import type { UserHours, DisplayType } from '../../../shared/types/index'
-import type { StatsUser } from '../../../shared/types/index'
-import type { OverviewViewProps } from '../types/index'
+import type { DisplayType, OverviewSettings, ShowState, Stats, StatsUser, UserHours } from '../../../shared/types/index'
 import { useHistoryStats } from '../hooks/useHistoryStats'
 import { PERIOD_OPTIONS, PERIOD_LABELS, formatPeriodRange, type OverviewPeriod } from '../consts/periods'
 
@@ -82,7 +80,31 @@ function TodayProgress({ loggedHours = 0, goalHours = 6.5 }: { loggedHours?: num
   )
 }
 
-export function OverviewView({ currentSettings, currentUser, rankingData, stats, lastSyncedAt, showState, errorMessage, onRetry, onConfigure }: OverviewViewProps) {
+export function OverviewView({
+  currentSettings,
+  currentUser,
+  rankingData,
+  stats,
+  lastSyncedAt,
+  showState,
+  errorMessage,
+  isSyncing,
+  onRetry,
+  onSync,
+  onConfigure,
+}: {
+  currentSettings: OverviewSettings | null
+  currentUser: StatsUser | null
+  rankingData: UserHours[]
+  stats: Omit<Stats, 'ranking'> | null
+  lastSyncedAt: number
+  showState: ShowState
+  errorMessage: string
+  isSyncing: boolean
+  onRetry: () => void
+  onSync: () => void
+  onConfigure: () => void
+}) {
   const [period, setPeriod] = useState<OverviewPeriod>('month')
 
   // Reuse the cached live stats only when personal hours are month-scoped
@@ -134,17 +156,20 @@ export function OverviewView({ currentSettings, currentUser, rankingData, stats,
               options={PERIOD_OPTIONS}
               className="glass-select--pill min-w-[150px]"
             />
-            {isLive ? (
-              <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
+            <div className="flex items-center gap-1">
+              {isLive ? (
+                <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
+                  </span>
+                  LIVE
                 </span>
-                LIVE
-              </span>
-            ) : history.data ? (
-              <span className="flex items-center gap-1 text-xs text-slate-400"><LockOutlined />{formatPeriodRange(history.data.from, history.data.to)}</span>
-            ) : null}
+              ) : history.data ? (
+                <span className="flex items-center gap-1 text-xs text-slate-400"><LockOutlined />{formatPeriodRange(history.data.from, history.data.to)}</span>
+              ) : null}
+              <Button type="text" size="small" icon={<SyncOutlined spin={isSyncing} />} onClick={onSync} title="Sync" />
+            </div>
           </section>
 
           {history.loading ? (

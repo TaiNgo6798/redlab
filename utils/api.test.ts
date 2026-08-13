@@ -1,5 +1,64 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getDateRange } from './api';
+import { getDateRange, hasOpenReview } from './api';
+
+describe('hasOpenReview', () => {
+  const note = (
+    authorId: number,
+    overrides: Partial<{
+      system: boolean
+      resolvable: boolean
+      resolved: boolean
+      created_at: string
+      body: string
+    }> = {},
+  ) => ({
+    system: false,
+    resolvable: false,
+    resolved: false,
+    author: { id: authorId },
+    created_at: '2026-08-03T04:28:42.711Z',
+    body: 'LGTM',
+    ...overrides,
+  })
+
+  // MR !1892: reviewer left LGTM, author did not reply, MR is approved
+  it('does not flag unanswered review when the MR is approved', () => {
+    const discussions = [{ notes: [note(19)] }]
+    expect(hasOpenReview(discussions, 110, true)).toBe(false)
+  })
+
+  it('flags unanswered top-level review when the MR is not approved', () => {
+    const discussions = [{ notes: [note(19)] }]
+    expect(hasOpenReview(discussions, 110, false)).toBe(true)
+  })
+
+  it('flags unresolved thread when someone else had the last word', () => {
+    const discussions = [{
+      notes: [
+        note(19, { resolvable: true, resolved: false, created_at: '2026-08-01T00:00:00.000Z' }),
+        note(19, { resolvable: true, resolved: false, created_at: '2026-08-02T00:00:00.000Z' }),
+      ],
+    }]
+    expect(hasOpenReview(discussions, 110)).toBe(true)
+  })
+
+  it('does not flag unresolved thread when approved', () => {
+    const discussions = [{
+      notes: [note(19, { resolvable: true, resolved: false })],
+    }]
+    expect(hasOpenReview(discussions, 110, true)).toBe(false)
+  })
+
+  it('does not flag when the author already replied', () => {
+    const discussions = [{
+      notes: [
+        note(19, { created_at: '2026-08-01T00:00:00.000Z' }),
+        note(110, { created_at: '2026-08-02T00:00:00.000Z' }),
+      ],
+    }]
+    expect(hasOpenReview(discussions, 110)).toBe(false)
+  })
+})
 
 describe('getDateRange — completed calendar periods', () => {
   beforeEach(() => {

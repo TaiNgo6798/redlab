@@ -55,8 +55,6 @@ function App() {
     <div className="flex min-h-screen flex-col bg-bg-primary p-3 text-text-primary">
       <AppHeader
         view={view}
-        isSyncing={view === 'ticket-sync' ? ticketSync.isSyncing : overview.isSyncing}
-        onSync={view === 'ticket-sync' ? ticketSync.refresh : () => overview.syncData()}
         onOpenOverview={() => handleSetView('overview')}
         onOpenSettings={() => handleSetView('settings')}
         onOpenOtp={() => handleSetView('otp')}
@@ -72,7 +70,9 @@ function App() {
           lastSyncedAt={overview.lastSyncedAt}
           showState={overview.showState}
           errorMessage={overview.errorMessage}
+          isSyncing={overview.isSyncing}
           onRetry={overview.loadData}
+          onSync={() => overview.syncData()}
           onConfigure={() => handleSetView('settings')}
         />
       )}
