@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "RedLab",
   "short_name": "RedLab",
-  "description": "Redmine time tracking, team leaderboards, GitLab ticket sync, and OTP codes.",
-  "version": "1.1.41",
+  "description": "Redmine time tracking and GitLab merge-request sync. Hours, team leaderboard, ticket status, and local OTP.",
+  "version": "1.1.42",
   "permissions": [
     "storage",
     "alarms",
