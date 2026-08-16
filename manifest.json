@@ -3,7 +3,7 @@
   "name": "RedLab",
   "short_name": "RedLab",
   "description": "Redmine time tracking and GitLab merge-request sync. Hours, team leaderboard, ticket status, and local OTP.",
-  "version": "1.1.42",
+  "version": "1.1.43",
   "permissions": [
     "storage",
     "alarms",

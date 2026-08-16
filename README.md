@@ -2,28 +2,41 @@
 
 > *You aren't lazy, you just forget to log it!*
 
-**RedLab** is a Chrome extension (Manifest V3) for **Redmine** time tracking and **GitLab** ticket/MR status. Track hours, compare with your team, sync resolved tickets to merge requests, and keep OTP codes handy — all in the side panel.
+Chrome side panel for teams that use **Redmine** and **GitLab**.
+
+Track logged hours, see the team leaderboard, and match resolved Redmine tickets to GitLab merge requests — plus local OTP codes.
 
 <p align="center">
-  <img src="assets/timelog.png" width="400" alt="RedLab overview" />
+  <a href="https://chromewebstore.google.com/detail/redlab/pimegpjllpdeeflnmfgkkoleobfncbjb">
+    <img src="https://storage.googleapis.com/web-dev-uploads/image/WlD8wC6g8khYWPJUsQceQkhXSlv1/UV4C4ybeBTsZt43U4xis.png" alt="Available in the Chrome Web Store" />
+  </a>
+</p>
+
+<p align="center">
+  <img src="assets/timelog.png" width="400" alt="RedLab Redmine time tracking and hours leaderboard" />
+</p>
+
+<p align="center">
+  <img src="assets/ticket-sync.png" width="400" alt="RedLab GitLab ticket sync and merge request status" />
 </p>
 
 **Chrome Web Store:** [RedLab](https://chromewebstore.google.com/detail/redlab/pimegpjllpdeeflnmfgkkoleobfncbjb)  
-**GitHub:** [TaiNgo6798/redlab](https://github.com/TaiNgo6798/redlab)  
 **Privacy policy:** [pitogram.cc/policies/privacy](https://pitogram.cc/policies/privacy)
 
-## Supported platforms
+## Who this is for
+
+You log time in **Redmine** and merge code in **GitLab**. RedLab is a Chrome extension that keeps both in one side panel.
 
 | Platform | What RedLab uses it for |
 |----------|-------------------------|
 | **Redmine** | Logged hours, expected/remaining, leaderboards, resolved tickets |
-| **GitLab** | Ticket Sync (MR status, conflicts, pipelines, review feedback) |
+| **GitLab** | Ticket Sync (merge request status, conflicts, pipelines, review feedback) |
 
-## Features
+## What it does
 
-- **Overview & leaderboard** — Logged vs expected vs remaining hours, progress bar, period filters (today / week / month / history ranges)
+- **Time tracking and leaderboard** — Logged vs expected vs remaining hours, progress bar, period filters (today / week / month / history ranges)
 - **Chrome badge** — Hours on the extension icon (logged or remaining, per settings)
-- **Ticket Sync** — Resolved Redmine tickets matched to GitLab MRs; groups for ready / conflicts / failed CI / open review / open to merge / draft
+- **Ticket Sync** — Resolved Redmine tickets matched to GitLab merge requests; groups for ready / conflicts / failed CI / open review / open to merge / draft
 - **OTP** — Local TOTP authenticators in the side panel
 - **Settings** — Redmine URL + API key, GitLab URL + token, hours-per-day, badge/ranking display, settings import/export
 - **Local-only credentials** — Keys stay in Chrome storage; calls go only to your configured hosts
@@ -44,16 +57,18 @@ npm run build
 
 1. Open `chrome://extensions`
 2. Enable **Developer mode**
-3. **Load unpacked** → select the `dist/` folder (or the repo root after build, depending on your CRXJS setup — use `dist/` for the built package)
+3. **Load unpacked** → select the `dist/` folder
 
-## Configuration
+## Setup
 
 1. Open the RedLab side panel
 2. Open **Settings**
-3. **Redmine:** base URL (no trailing slash) + API key  
-4. **GitLab (Ticket Sync):** base URL + personal access token  
-5. Set hours per day and badge preferences  
+3. **Redmine:** base URL (no trailing slash) + API key
+4. **GitLab (Ticket Sync):** base URL + personal access token
+5. Set hours per day and badge preferences
 6. Fields save on blur
+
+Use any Redmine host and any GitLab host. There is no company-specific default.
 
 ## Development
 
@@ -91,10 +106,10 @@ sidepanel  ──messages──▶  background service worker  ──▶  Redmin
  (settings)                  (cached stats / ticket groups)
 ```
 
-- **background.ts** — alarms, badge, API proxy, ticket-sync notifications  
-- **sidepanel/** — overview, settings, OTP, ticket-sync views  
-- **utils/api.ts** — Redmine + GitLab HTTP  
-- **utils/ticketSyncEngine.ts** — resolve tickets ↔ MRs and group evaluation  
+- **background.ts** — alarms, badge, API proxy, ticket-sync notifications
+- **sidepanel/** — overview, settings, OTP, ticket-sync views
+- **utils/api.ts** — Redmine + GitLab HTTP
+- **utils/ticketSyncEngine.ts** — resolve tickets ↔ MRs and group evaluation
 
 ## Privacy
 
