@@ -7,6 +7,12 @@ Chrome side panel for teams that use **Redmine** and **GitLab**.
 Track logged hours, see the team leaderboard, and match resolved Redmine tickets to GitLab merge requests — plus local OTP codes.
 
 <p align="center">
+  <a href="https://chromewebstore.google.com/detail/redlab/pimegpjllpdeeflnmfgkkoleobfncbjb">
+    <img src="assets/chrome-web-store-badge.png" alt="Available in the Chrome Web Store" />
+  </a>
+</p>
+
+<p align="center">
   <img src="assets/timelog.png" width="400" alt="RedLab Redmine time tracking and hours leaderboard" />
 </p>
 
