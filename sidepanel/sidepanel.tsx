@@ -9,6 +9,7 @@ import { OverviewView } from './domains/overview/components/OverviewView'
 import { SettingsView } from './domains/settings/components/SettingsView'
 import { OtpView } from './domains/otp/components/OtpView'
 import { TicketSyncView } from './domains/ticket-sync/components/TicketSyncView'
+import { MockTicketsModal } from './domains/ticket-sync/components/MockTicketsModal'
 import { useOverviewData } from './domains/overview/hooks/useOverviewData'
 import { useSettingsManager } from './domains/settings/hooks/useSettingsManager'
 import { useTicketSync } from './domains/ticket-sync/hooks/useTicketSync'
@@ -16,6 +17,7 @@ import { useTicketSync } from './domains/ticket-sync/hooks/useTicketSync'
 function App() {
   const [view, setView] = useState<ViewName>('overview')
   const [isLoaded, setIsLoaded] = useState(false)
+  const [isMockModalOpen, setIsMockModalOpen] = useState(false)
 
   const overview = useOverviewData()
   const settings = useSettingsManager()
@@ -59,6 +61,7 @@ function App() {
         onOpenSettings={() => handleSetView('settings')}
         onOpenOtp={() => handleSetView('otp')}
         onOpenTicketSync={() => handleSetView('ticket-sync')}
+        onOpenMockPreview={() => setIsMockModalOpen(true)}
       />
 
       {view === 'overview' && (
@@ -101,7 +104,7 @@ function App() {
 
       {view === 'ticket-sync' && (
         <TicketSyncView
-          groups={ticketSync.groups}
+          tickets={ticketSync.tickets}
           showState={ticketSync.showState}
           isSyncing={ticketSync.isSyncing}
           syncProgress={ticketSync.syncProgress}
@@ -110,6 +113,11 @@ function App() {
           onConfigure={() => handleSetView('settings')}
         />
       )}
+
+      <MockTicketsModal
+        open={isMockModalOpen}
+        onClose={() => setIsMockModalOpen(false)}
+      />
     </div>
   )
 }

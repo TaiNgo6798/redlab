@@ -1,207 +1,218 @@
+import { useMemo } from 'react'
 import { Button, Spin, Tag, Typography, Progress } from 'antd'
-import { ExclamationCircleOutlined, SettingOutlined, SyncOutlined } from '@ant-design/icons'
+import {
+  ExclamationCircleOutlined,
+  SettingOutlined,
+  SyncOutlined,
+  BranchesOutlined,
+  CommentOutlined,
+  CloseCircleOutlined,
+  WarningOutlined,
+  CheckOutlined,
+  EditOutlined,
+  CheckCircleOutlined,
+  ArrowRightOutlined,
+} from '@ant-design/icons'
 import { PanelCard } from '../../../shared/components/PanelCard'
-import type { ProcessedTicket, TicketGroup, TicketEvaluation } from '../types/index'
+import type { ProcessedTicket, MRStatusFlag } from '../types/index'
 import type { ShowState } from '../../../shared/types/index'
 import {
-  type MRChipStatus,
-  getChipStatusForGroup,
+  MR_STATUS_FLAG_CONFIG,
+  getMRStatusFlags,
+  isReadyToTest,
 } from '../utils/mrChips'
 
 const { Text } = Typography
 
-function GroupIcon({ type }: { type: TicketEvaluation }) {
-  const baseClass = "w-5 h-5";
-  switch (type) {
-    case 'ready':
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={`${baseClass} text-[#4CAF50]`}>
-          <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
-          <path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      );
-    case 'draft':
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={`${baseClass} text-gray-400`}>
-          <path d="M12 4l8 8-8 8-8-8z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 4" />
-          <circle cx="12" cy="12" r="2" fill="currentColor" />
-        </svg>
-      );
-    case 'conflicts':
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={`${baseClass} text-danger`}>
-          <path d="M12 4l6 10H6z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <line x1="12" y1="9" x2="12" y2="11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          <circle cx="12" cy="14" r="1.5" fill="currentColor" />
-        </svg>
-      );
+function getTicketStatusInfo(status?: string): { className: string; dotClass: string } {
+  if (!status) {
+    return {
+      className: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+      dotClass: 'bg-slate-400',
+    }
+  }
+  const normalized = status.toLowerCase()
+  if (normalized.includes('resolved') || normalized.includes('closed') || normalized.includes('done')) {
+    return {
+      className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+      dotClass: 'bg-emerald-400',
+    }
+  }
+  if (normalized.includes('progress') || normalized.includes('developing')) {
+    return {
+      className: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
+      dotClass: 'bg-cyan-400',
+    }
+  }
+  if (normalized.includes('feedback') || normalized.includes('review') || normalized.includes('testing')) {
+    return {
+      className: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+      dotClass: 'bg-amber-400',
+    }
+  }
+  if (normalized.includes('new') || normalized.includes('open')) {
+    return {
+      className: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+      dotClass: 'bg-purple-400',
+    }
+  }
+  return {
+    className: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+    dotClass: 'bg-slate-400',
+  }
+}
+
+function renderStatusFlagIcon(flag: MRStatusFlag) {
+  switch (flag) {
+    case 'has_review':
+      return <CommentOutlined className="text-[10px]" />
     case 'test_failed':
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={`${baseClass} text-danger`}>
-          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-          <path d="M9 9l6 6M15 9l-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      );
-    case 'review':
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={`${baseClass} text-warning`}>
-          <path d="M4 6h12v8h-4l-4 4v-4H4z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx="16" cy="6" r="2.5" fill="currentColor" />
-        </svg>
-      );
+      return <CloseCircleOutlined className="text-[10px]" />
+    case 'conflict':
+      return <WarningOutlined className="text-[10px]" />
+    case 'merged':
+      return <CheckOutlined className="text-[10px]" />
+    case 'draft':
+      return <EditOutlined className="text-[10px]" />
     case 'open':
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={`${baseClass} text-[#00a3b8]`}>
-          <path d="M8 6v12 M16 18c0-5-8-5-8-8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          <circle cx="8" cy="6" r="2" fill="currentColor" />
-          <circle cx="8" cy="18" r="2" fill="currentColor" />
-          <circle cx="16" cy="18" r="2" fill="currentColor" />
-        </svg>
-      );
-    case 'others':
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={`${baseClass} text-gray-400`}>
-          <path d="M12 3l8 4-8 4-8-4 8-4z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M4 11l8 4 8-4 M4 15l8 4 8-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      );
     default:
-      return null;
+      return <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
   }
 }
 
-const CHIP_TAG_CLASS: Record<MRChipStatus, string> = {
-  failed: 'mr-tag--danger',
-  conflict: 'mr-tag--conflict',
-  review: 'mr-tag--warning',
-  merged: 'mr-tag--merged',
-  closed: 'mr-tag--closed',
-  open: 'mr-tag--opened',
+export interface TicketPairCardProps {
+  ticket: ProcessedTicket
+  isReadyToTest?: boolean
 }
 
-function renderMRIcon(status: MRChipStatus) {
-  if (status === 'failed') {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="mr-tag__icon">
-        <path fillRule="evenodd" clipRule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm5.28-2.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
-      </svg>
-    )
-  }
-  if (status === 'conflict') {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="mr-tag__icon">
-        <path fillRule="evenodd" clipRule="evenodd" d="M8.893 1.5c-.183-.311-.52-.5-.893-.5s-.71.189-.893.5L.184 13.5c-.19.324-.195.733-.015 1.06A.996.996 0 0 0 1.042 15h13.916a.996.996 0 0 0 .873-.44c.18-.327.175-.736-.015-1.06L8.893 1.5Zm-1.893 4v4h2V5.5H7Zm1 7.5a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/>
-      </svg>
-    )
-  }
-  if (status === 'review') {
-    return (
-      <svg width="14" height="14" viewBox="0 0 24 24" className="mr-tag__icon">
-        <path d="M4 6h12v8h-4l-4 4v-4H4z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="16" cy="6" r="2.5" fill="currentColor" />
-      </svg>
-    )
-  }
-  if (status === 'merged') {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="mr-tag__icon">
-        <path fillRule="evenodd" clipRule="evenodd" d="M5.5 3.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-.044 2.31a2.5 2.5 0 1 0-1.706.076v4.228a2.501 2.501 0 1 0 1.5 0V8.373a5.735 5.735 0 0 0 3.86 1.864 2.501 2.501 0 1 0 .01-1.504 4.254 4.254 0 0 1-3.664-2.922ZM11.5 10.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm-6 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" />
-      </svg>
-    )
-  }
-  if (status === 'closed') {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="mr-tag__icon">
-        <path fillRule="evenodd" clipRule="evenodd" d="M1.22 1.22a.75.75 0 0 1 1.06 0L3.5 2.44l1.22-1.22a.75.75 0 0 1 1.06 1.06L4.56 3.5l1.22 1.22a.75.75 0 0 1-1.06 1.06L3.5 4.56 2.28 5.78a.75.75 0 0 1-1.06-1.06L2.44 3.5 1.22 2.28a.75.75 0 0 1 0-1.06ZM7.5 3.5a.75.75 0 0 1 .75-.75h2.25a2.75 2.75 0 0 1 2.75 2.75v4.614a2.501 2.501 0 1 1-1.5 0V5.5c0-.69-.56-1.25-1.25-1.25H8.25a.75.75 0 0 1-.75-.75Zm5 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm-8-1a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm1.5 0a2.5 2.5 0 1 1-3.25-2.386V7.75a.75.75 0 0 1 1.5 0v2.364A2.501 2.501 0 0 1 6 12.5Z" />
-      </svg>
-    )
-  }
-
-  // open
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="mr-tag__icon">
-      <path fillRule="evenodd" clipRule="evenodd" d="M10.34 1.22a.75.75 0 0 0-1.06 0L7.53 2.97 7 3.5l.53.53 1.75 1.75a.75.75 0 1 0 1.06-1.06l-.47-.47h.63c.69 0 1.25.56 1.25 1.25v4.614a2.501 2.501 0 1 0 1.5 0V5.5a2.75 2.75 0 0 0-2.75-2.75h-.63l.47-.47a.75.75 0 0 0 0-1.06ZM13.5 12.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-9 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm1.5 0a2.5 2.5 0 1 1-3.25-2.386V5.886a2.501 2.501 0 1 1 1.5 0v4.228A2.501 2.501 0 0 1 6 12.5Zm-1.5-9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" />
-    </svg>
-  )
-}
-
-function TicketCard({ ticket, groupKey }: { ticket: ProcessedTicket; groupKey: TicketEvaluation }) {
-  const sortedMRs = [...ticket.mrs].sort((a, b) => {
-    const stateWeight = (state: string) => {
-      if (state === 'opened') return 0;
-      if (state === 'merged') return 1;
-      return 2;
-    };
-    return stateWeight(a.state) - stateWeight(b.state);
-  });
-
-  // All MRs of the ticket, one pill each; pill prefers group-matching status when present.
-  const chips = sortedMRs.map((mr) => ({
-    mr,
-    status: getChipStatusForGroup(mr, groupKey),
-  }))
+export function TicketPairCard({ ticket, isReadyToTest = false }: TicketPairCardProps) {
+  const isNoTicket = !ticket.id || ticket.title === 'No ticket'
+  const statusInfo = getTicketStatusInfo(ticket.status)
 
   return (
-    <div className="flex flex-col gap-1.5 border-b border-white/5 px-1 py-3 last:border-b-0">
-      <a
-        href={ticket.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block truncate text-sm font-medium text-text-primary no-underline hover:text-accent-light hover:underline"
-        title={`#${ticket.id} - ${ticket.title}`}
-      >
-        #{ticket.id} - {ticket.title}
-      </a>
-      <div className="flex flex-wrap gap-1">
-        {chips.map(({ mr, status }) => (
-          <a
-            key={`${mr.repo}-${mr.iid}`}
-            href={mr.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={status}
-          >
-            <Tag className={`mr-tag ${CHIP_TAG_CLASS[status]} cursor-pointer border-0 text-xs font-semibold`}>
-              {renderMRIcon(status)}
-              <span>
-                {mr.repo} !{mr.iid} ({status})
+    <PanelCard
+      className={`p-3.5 flex flex-col gap-3 transition-all duration-200 hover:border-accent-light/40 ${
+        isReadyToTest ? 'border-emerald-500/30' : ''
+      }`}
+    >
+      {/* Line 1: Ticket status + Ticket title */}
+      <div className="flex items-center gap-2 min-w-0">
+        {!isNoTicket ? (
+          <>
+            {ticket.status && (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold border leading-none shrink-0 ${statusInfo.className}`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${statusInfo.dotClass}`} />
+                {ticket.status}
               </span>
-            </Tag>
-          </a>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function TicketGroupCard({ group }: { group: TicketGroup }) {
-  return (
-    <PanelCard className="p-4">
-      <div className="mb-3 flex items-start gap-2 border-b border-white/10 pb-3">
-        <div className="mt-0.5">
-          <GroupIcon type={group.key} />
-        </div>
-        <div className="flex flex-col flex-1">
+            )}
+            {ticket.url ? (
+              <a
+                href={ticket.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-1.5 truncate text-sm font-medium text-text-primary no-underline flex-1 min-w-0"
+                title={`#${ticket.id} - ${ticket.title}`}
+              >
+                <span className="font-bold text-accent-light shrink-0">#{ticket.id}</span>
+                <span className="truncate group-hover:text-accent-light group-hover:underline transition-colors">
+                  {ticket.title}
+                </span>
+              </a>
+            ) : (
+              <div
+                className="flex items-center gap-1.5 truncate text-sm font-medium text-text-primary flex-1 min-w-0"
+                title={`#${ticket.id} - ${ticket.title}`}
+              >
+                <span className="font-bold text-accent-light shrink-0">#{ticket.id}</span>
+                <span className="truncate">{ticket.title}</span>
+              </div>
+            )}
+          </>
+        ) : (
           <div className="flex items-center gap-2">
-            <h2 className="m-0 text-sm font-semibold">{group.label}</h2>
-            <Tag className="m-0 border-0 text-xs leading-[18px]">{group.tickets.length}</Tag>
+            <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold border bg-slate-500/15 text-slate-300 border-slate-500/30">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+              No ticket
+            </span>
+            <span className="text-xs text-text-secondary italic">Untracked Merge Requests</span>
           </div>
-          {group.description && (
-            <span className="text-[11px] text-gray-400 mt-0.5 leading-tight">{group.description}</span>
+        )}
+      </div>
+
+      {/* Line 2: List of MRs as pills/cards */}
+      <div className="flex flex-col gap-1.5">
+        {ticket.mrs.map((mr) => {
+          const flags = getMRStatusFlags(mr)
+          return (
+            <a
+              key={`${mr.repo}-${mr.iid}`}
+              href={mr.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="no-underline group"
+              title={mr.title ? `${mr.repo}!${mr.iid}: ${mr.title}` : `${mr.repo}!${mr.iid}`}
+            >
+              <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-bg-primary/60 hover:bg-bg-primary/90 border border-white/5 hover:border-accent-light/40 transition-all cursor-pointer">
+                {/* Left: Repo & IID */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <BranchesOutlined className="text-accent-light text-xs shrink-0" />
+                  <span className="text-xs font-semibold text-text-primary group-hover:text-accent-light transition-colors truncate">
+                    {mr.repo}
+                  </span>
+                  <span className="text-[11px] font-mono font-medium text-accent-light bg-accent/15 px-1.5 py-0.2 rounded shrink-0">
+                    !{mr.iid}
+                  </span>
+                </div>
+
+                {/* Right: Status Flags */}
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                  {flags.map((flag) => {
+                    const config = MR_STATUS_FLAG_CONFIG[flag]
+                    return (
+                      <span
+                        key={flag}
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium leading-none ${config.className}`}
+                      >
+                        {renderStatusFlagIcon(flag)}
+                        <span>{config.label}</span>
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            </a>
+          )
+        })}
+      </div>
+
+      {/* Notice for Ready to Test cards */}
+      {isReadyToTest && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs">
+          <div className="flex items-center gap-1.5 min-w-0 truncate">
+            <CheckCircleOutlined className="text-emerald-400 shrink-0 text-xs" />
+            <span className="font-medium truncate">Test & mark ticket as Testable</span>
+          </div>
+          {ticket.url && (
+            <a
+              href={ticket.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 font-semibold text-emerald-300 hover:text-emerald-200 hover:underline inline-flex items-center gap-1 text-[11px]"
+            >
+              <span>Open Ticket</span>
+              <ArrowRightOutlined className="text-[9px]" />
+            </a>
           )}
         </div>
-      </div>
-      <div className="flex flex-col">
-        {group.tickets.map((ticket) => (
-          <TicketCard key={ticket.id} ticket={ticket} groupKey={group.key} />
-        ))}
-      </div>
+      )}
     </PanelCard>
   )
 }
 
 interface TicketSyncViewProps {
-  groups: TicketGroup[]
+  tickets: ProcessedTicket[]
   showState: ShowState
   isSyncing: boolean
   syncProgress: number
@@ -210,7 +221,18 @@ interface TicketSyncViewProps {
   onConfigure: () => void
 }
 
-export function TicketSyncView({ groups, showState, isSyncing, syncProgress, error, onRefresh, onConfigure }: TicketSyncViewProps) {
+export function TicketSyncView({
+  tickets,
+  showState,
+  isSyncing,
+  syncProgress,
+  error,
+  onRefresh,
+  onConfigure,
+}: TicketSyncViewProps) {
+  const totalMRs = tickets.reduce((acc, t) => acc + t.mrs.length, 0)
+  const readyToTestTickets = useMemo(() => tickets.filter(isReadyToTest), [tickets])
+  const activeTickets = useMemo(() => tickets.filter((t) => !isReadyToTest(t)), [tickets])
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 fade-in">
@@ -251,35 +273,117 @@ export function TicketSyncView({ groups, showState, isSyncing, syncProgress, err
       {showState === 'loading' && (
         <PanelCard className="flex flex-col items-center justify-center p-10">
           <Spin size="large" />
-          <Text className="mt-3">Syncing tickets...</Text>
+          <Text className="mt-3 text-text-secondary">Syncing tickets & MRs...</Text>
         </PanelCard>
       )}
 
       {showState === 'main' && (
         <>
-          {!isSyncing && (
-            <div className="flex justify-end">
-              <Button type="text" size="small" icon={<SyncOutlined />} onClick={onRefresh} title="Sync" />
+          {/* Header Controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                Sync Overview
+              </span>
+              <Tag className="m-0 border border-white/10 bg-white/5 text-xs text-text-secondary rounded-full px-2">
+                {tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'} • {totalMRs} MRs
+              </Tag>
             </div>
-          )}
+            {!isSyncing && (
+              <Button
+                type="text"
+                size="small"
+                icon={<SyncOutlined className="text-text-secondary hover:text-accent-light" />}
+                onClick={onRefresh}
+                title="Refresh Tickets"
+              />
+            )}
+          </div>
+
+          {/* Sync Progress */}
           {isSyncing && (
-            <div className="mb-4 flex flex-col">
-              <div className="mb-1 flex justify-between text-xs text-text-secondary">
-                <span>Syncing latest tickets...</span>
-                <span>{syncProgress}%</span>
+            <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-bg-card border border-white/5">
+              <div className="flex justify-between text-xs text-text-secondary">
+                <span className="flex items-center gap-1.5">
+                  <SyncOutlined spin className="text-accent-light" />
+                  Syncing latest MRs & tickets...
+                </span>
+                <span className="font-mono">{syncProgress}%</span>
               </div>
-              <Progress percent={syncProgress} showInfo={false} size={['100%', 4]} strokeColor={{ '0%': '#00a3b8', '100%': '#4CAF50' }} />
+              <Progress
+                percent={syncProgress}
+                showInfo={false}
+                size={['100%', 4]}
+                strokeColor={{ from: 'var(--color-accent-light)', to: 'var(--color-success)' }}
+              />
             </div>
           )}
-          {groups.length === 0 ? (
-            <PanelCard className="p-6 text-center">
-              <span className="mb-2 block text-3xl">🎉</span>
-              <Text type="secondary" className="block">No resolved tickets to sync</Text>
+
+          {/* Ticket List */}
+          {tickets.length === 0 ? (
+            <PanelCard className="p-8 text-center flex flex-col items-center justify-center gap-2">
+              <span className="text-3xl mb-1">🎉</span>
+              <span className="text-base font-semibold text-text-primary">All Caught Up</span>
+              <Text type="secondary" className="block text-xs max-w-[240px]">
+                No active merge requests or pending tickets found on your account.
+              </Text>
             </PanelCard>
           ) : (
-            groups.map((group) => (
-              <TicketGroupCard key={group.key} group={group} />
-            ))
+            <div className="flex flex-col gap-5">
+              {/* Ready to Test Group */}
+              {readyToTestTickets.length > 0 && (
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircleOutlined className="text-emerald-400 text-sm" />
+                      <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
+                        Ready to Test
+                      </span>
+                      <Tag className="m-0 border border-emerald-500/30 bg-emerald-500/15 text-xs text-emerald-300 font-semibold rounded-full px-2">
+                        {readyToTestTickets.length}
+                      </Tag>
+                    </div>
+                    <span className="text-[11px] text-text-secondary">
+                      Mark to Testable
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {readyToTestTickets.map((ticket, index) => (
+                      <TicketPairCard
+                        key={ticket.id !== null ? `ready-${ticket.id}` : `ready-no-ticket-${ticket.mrs[0]?.url || index}`}
+                        ticket={ticket}
+                        isReadyToTest={true}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Active Tickets Group */}
+              {activeTickets.length > 0 && (
+                <div className="flex flex-col gap-2.5">
+                  {readyToTestTickets.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <BranchesOutlined className="text-accent-light text-sm" />
+                      <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">
+                        Active Tickets & MRs
+                      </span>
+                      <Tag className="m-0 border border-white/10 bg-white/5 text-xs text-text-secondary rounded-full px-2">
+                        {activeTickets.length}
+                      </Tag>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-3">
+                    {activeTickets.map((ticket, index) => (
+                      <TicketPairCard
+                        key={ticket.id !== null ? `ticket-${ticket.id}` : `no-ticket-${ticket.mrs[0]?.url || index}`}
+                        ticket={ticket}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </>
       )}

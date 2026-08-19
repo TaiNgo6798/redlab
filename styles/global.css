@@ -15,6 +15,8 @@
   --color-gold: #FFD700;
   --color-silver: #C0C0C0;
   --color-bronze: #CD7F32;
+  --color-brand-red: #B11612;
+  --color-brand-orange: #FC6D26;
 }
 
 /* Base styles */
@@ -337,3 +339,44 @@ html.sidepanel #root {
 .feature-icon-box {
   background: rgba(0, 121, 144, 0.15);
 }
+
+/* Redesigned Tooltips */
+.ant-tooltip .ant-tooltip-inner {
+  background: rgba(11, 19, 34, 0.94) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  color: #f1f5f9 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em !important;
+  padding: 4px 8px !important;
+  border-radius: 7px !important;
+  min-height: auto !important;
+  line-height: 1.35 !important;
+}
+
+.ant-tooltip .ant-tooltip-arrow:before {
+  background: #0b1322 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Modal slim scrollbar */
+.modal-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+

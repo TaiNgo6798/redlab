@@ -102,13 +102,19 @@ export const antdTheme: ThemeConfig = {
       colorInfo: '#007990',
     },
     Popover: {
-      colorBgElevated: '#163d70',
+      colorBgElevated: '#0b1322',
     },
     Tooltip: {
-      colorBgSpotlight: '#163d70',
+      colorBgSpotlight: '#0b1322',
+      borderRadius: 8,
+    },
+    Modal: {
+      contentBg: '#080d1a',
+      headerBg: '#080d1a',
+      titleColor: '#f1f5f9',
     },
     Message: {
-      contentBg: '#163d70',
+      contentBg: '#0b1322',
       colorText: '#e8eaed',
     },
   },

@@ -1,62 +1,26 @@
 import {
-  getResolvedTickets,
   getGitlabUser,
+  getUserMRs,
   searchGitlabMRs,
   getGitlabMR,
   getMRLatestPipelineStatus,
   checkMRDiscussions,
-  getOtherUserMRs,
+  getRedmineIssue,
   type GitlabMR,
 } from './api';
-import { PROBLEM_RULES } from './ticketSyncRules';
-import type { ProcessedTicket, ProcessedMR, TicketEvaluation, TicketGroup } from '../sidepanel/domains/ticket-sync/types/index';
+import type { ProcessedTicket, ProcessedMR } from '../sidepanel/domains/ticket-sync/types/index';
 
-export const GROUP_CONFIG: { key: TicketEvaluation; label: string; description?: string }[] = [
-  { key: 'ready', label: 'Ready to Test', description: 'Tickets are set as Resolved and MRs are merged' },
-  { key: 'conflicts', label: 'Has Conflicts' },
-  { key: 'test_failed', label: 'Test Failed', description: 'Has at least one failed pipeline' },
-  { key: 'review', label: 'Has Open Review' },
-  { key: 'open', label: 'Open to Merge', description: 'Tickets are set as Resolved' },
-  { key: 'draft', label: 'Draft MR' },
-  { key: 'others', label: 'Others' },
-];
-
-/**
- * Evaluate a ticket into one or more groups.
- * Problem states stack (conflicts / test_failed / review).
- * Terminal / exclusive states (ready, draft, open, others) stay single-group.
- */
-export function evaluateTicket(
-  mrs: ProcessedMR[],
-  isResolved: boolean = true,
-): { evaluations: TicketEvaluation[] } {
-  if (mrs.length === 0) {
-    return { evaluations: [isResolved ? 'open' : 'others'] };
+/** Extract ticket ID from MR title (e.g. [#123], #123). */
+export function extractTicketId(title: string): number | null {
+  const match = title.match(/\[?#(\d+)\]?/);
+  if (match && match[1]) {
+    const id = parseInt(match[1], 10);
+    if (!Number.isNaN(id) && id > 0) return id;
   }
-
-  if (mrs.every((mr) => mr.state === 'merged')) {
-    return { evaluations: [isResolved ? 'ready' : 'others'] };
-  }
-
-  if (mrs.some((mr) => mr.is_draft)) {
-    return { evaluations: ['draft'] };
-  }
-
-  const evaluations: TicketEvaluation[] = [];
-  for (const rule of PROBLEM_RULES) {
-    if (mrs.some((mr) => mr[rule.flag])) {
-      evaluations.push(rule.evaluation);
-    }
-  }
-
-  if (evaluations.length === 0) {
-    return { evaluations: [isResolved ? 'open' : 'others'] };
-  }
-
-  return { evaluations };
+  return null;
 }
 
-async function processMR(
+export async function processMR(
   gitlabUrl: string,
   gitlabToken: string,
   mr: GitlabMR,
@@ -93,51 +57,17 @@ async function processMR(
   const repoName = repoMatch ? repoMatch[1] : 'unknown';
 
   return {
+    id: mr.id,
     iid: mr.iid,
     repo: repoName,
     url: mr.web_url,
+    title: mr.title,
     state: mr.state,
-    has_conflicts: source.has_conflicts || false,
+    has_conflicts: Boolean(source.has_conflicts),
     has_open_review: hasOpenReview,
     is_draft: Boolean(source.draft) || mr.title.toLowerCase().startsWith('draft:'),
     has_failed_pipeline: hasFailedPipeline,
   };
-}
-
-function attachProcessedMR(
-  processedTickets: ProcessedTicket[],
-  resolvedTicketIds: Set<number>,
-  redmineUrl: string,
-  mr: GitlabMR,
-  processedMR: ProcessedMR,
-): void {
-  let ticketId = -mr.id || -(Math.random() * 100000);
-  let ticketUrl = mr.web_url;
-  let ticketTitle = mr.title;
-
-  const titleMatch = mr.title.match(/\[?#(\d+)\]?/);
-  if (titleMatch && titleMatch[1]) {
-    ticketId = parseInt(titleMatch[1], 10);
-    ticketUrl = `${redmineUrl.replace(/\/$/, '')}/issues/${ticketId}`;
-    ticketTitle = mr.title.replace(titleMatch[0], '').trim().replace(/^-/, '').trim();
-  }
-
-  const existingTicket = processedTickets.find((t) => t.id === ticketId);
-  if (existingTicket) {
-    existingTicket.mrs.push(processedMR);
-    const { evaluations } = evaluateTicket(existingTicket.mrs, resolvedTicketIds.has(ticketId));
-    existingTicket.evaluations = evaluations;
-    return;
-  }
-
-  const { evaluations } = evaluateTicket([processedMR], false);
-  processedTickets.push({
-    id: ticketId,
-    title: ticketTitle,
-    url: ticketUrl,
-    mrs: [processedMR],
-    evaluations,
-  });
 }
 
 export async function fetchAndProcessTickets(
@@ -146,86 +76,114 @@ export async function fetchAndProcessTickets(
   gitlabUrl: string,
   gitlabToken: string,
   onProgress?: (progress: number) => void
-): Promise<TicketGroup[]> {
-  const [tickets, gitlabUser] = await Promise.all([
-    getResolvedTickets(redmineUrl, redmineApiKey),
-    getGitlabUser(gitlabUrl, gitlabToken),
-  ]);
+): Promise<ProcessedTicket[]> {
+  const gitlabUser = await getGitlabUser(gitlabUrl, gitlabToken);
+  const userMRs = await getUserMRs(gitlabUrl, gitlabToken, gitlabUser.id);
 
-  const processedTickets: ProcessedTicket[] = [];
-  const resolvedTicketIds = new Set(tickets.map((t) => t.id));
-
-  if (tickets.length > 0) {
-    let processedCount = 0;
-    const chunkSize = 5;
-
-    for (let i = 0; i < tickets.length; i += chunkSize) {
-      const chunk = tickets.slice(i, i + chunkSize);
-
-      await Promise.all(chunk.map(async (ticket) => {
-        try {
-          const mrs = await searchGitlabMRs(gitlabUrl, gitlabToken, ticket.id);
-          if (mrs.length === 0) {
-            return;
-          }
-
-          const processedMRs: ProcessedMR[] = await Promise.all(
-            mrs.map((mr) => processMR(gitlabUrl, gitlabToken, mr, gitlabUser.id)),
-          );
-
-          const { evaluations } = evaluateTicket(processedMRs, true);
-          processedTickets.push({
-            id: ticket.id,
-            title: ticket.title,
-            url: ticket.url,
-            mrs: processedMRs,
-            evaluations,
-          });
-        } catch (err) {
-          console.error(`Failed to process ticket ${ticket.id}:`, err);
-        } finally {
-          processedCount++;
-          onProgress?.(Math.round((processedCount / tickets.length) * 100));
-        }
-      }));
-    }
-  } else {
+  if (userMRs.length === 0) {
     onProgress?.(100);
+    return [];
   }
 
-  // Other open MRs (authored/assigned) not already tied to a resolved ticket.
-  try {
-    const otherMRs = await getOtherUserMRs(gitlabUrl, gitlabToken, gitlabUser.id);
-    const trackedUrls = new Set<string>();
+  const ticketIdMap = new Map<number, GitlabMR[]>();
+  const unticketedMRs: GitlabMR[] = [];
 
-    processedTickets.forEach((t) => {
-      t.mrs.forEach((mr) => trackedUrls.add(mr.url));
-    });
-
-    const untrackedMRs = otherMRs.filter((mr) => !trackedUrls.has(mr.web_url));
-
-    // Enrich in parallel; attach serially so same-ticket merges stay race-free.
-    const processed = await Promise.all(
-      untrackedMRs.map((mr) => processMR(gitlabUrl, gitlabToken, mr, gitlabUser.id)),
-    );
-
-    for (let i = 0; i < untrackedMRs.length; i++) {
-      attachProcessedMR(
-        processedTickets,
-        resolvedTicketIds,
-        redmineUrl,
-        untrackedMRs[i],
-        processed[i],
-      );
+  for (const mr of userMRs) {
+    const ticketId = extractTicketId(mr.title);
+    if (ticketId !== null) {
+      const existing = ticketIdMap.get(ticketId) || [];
+      existing.push(mr);
+      ticketIdMap.set(ticketId, existing);
+    } else {
+      unticketedMRs.push(mr);
     }
-  } catch (err) {
-    console.error('Failed to fetch other MRs:', err);
   }
 
-  return GROUP_CONFIG
-    .map((config) => ({
-      ...config,
-      tickets: processedTickets.filter((t) => t.evaluations.includes(config.key)),
-    }))
-    .filter((g) => g.tickets.length > 0);
+  const uniqueTicketIds = Array.from(ticketIdMap.keys());
+  const totalSteps = uniqueTicketIds.length + unticketedMRs.length;
+  let completedSteps = 0;
+
+  const updateProgress = () => {
+    completedSteps++;
+    if (totalSteps > 0) {
+      onProgress?.(Math.round((completedSteps / totalSteps) * 100));
+    }
+  };
+
+  const results: ProcessedTicket[] = [];
+
+  // Fetch ticket details & any sibling MRs across repos for each ticket
+  await Promise.all(
+    uniqueTicketIds.map(async (ticketId) => {
+      try {
+        const [matchingMRs, redmineIssue] = await Promise.all([
+          searchGitlabMRs(gitlabUrl, gitlabToken, ticketId).catch(() => []),
+          redmineUrl && redmineApiKey
+            ? getRedmineIssue(redmineUrl, redmineApiKey, ticketId).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+
+        const mrMap = new Map<string, GitlabMR>();
+        for (const mr of ticketIdMap.get(ticketId) || []) {
+          mrMap.set(mr.web_url, mr);
+        }
+        for (const mr of matchingMRs) {
+          mrMap.set(mr.web_url, mr);
+        }
+
+        const allMRs = Array.from(mrMap.values());
+        const processedMRs = await Promise.all(
+          allMRs.map((mr) => processMR(gitlabUrl, gitlabToken, mr, gitlabUser.id)),
+        );
+
+        if (redmineIssue) {
+          results.push({
+            id: ticketId,
+            title: redmineIssue.subject,
+            status: redmineIssue.status?.name,
+            url: `${redmineUrl.replace(/\/$/, '')}/issues/${ticketId}`,
+            mrs: processedMRs,
+          });
+        } else {
+          results.push({
+            id: null,
+            title: 'No ticket',
+            mrs: processedMRs,
+          });
+        }
+      } catch (err) {
+        console.error(`Failed to process ticket ${ticketId}:`, err);
+      } finally {
+        updateProgress();
+      }
+    }),
+  );
+
+  // Process unticketed MRs
+  await Promise.all(
+    unticketedMRs.map(async (mr) => {
+      try {
+        const processed = await processMR(gitlabUrl, gitlabToken, mr, gitlabUser.id);
+        results.push({
+          id: null,
+          title: 'No ticket',
+          mrs: [processed],
+        });
+      } catch (err) {
+        console.error('Failed to process unticketed MR:', err);
+      } finally {
+        updateProgress();
+      }
+    }),
+  );
+
+  onProgress?.(100);
+
+  return results.sort((a, b) => {
+    if (a.id !== null && b.id !== null) return b.id - a.id;
+    if (a.id !== null) return -1;
+    if (b.id !== null) return 1;
+    return 0;
+  });
 }
+

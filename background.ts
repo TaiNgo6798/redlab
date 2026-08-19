@@ -15,12 +15,13 @@ import {
   getMRLatestPipelineStatus,
   checkMRDiscussions,
   getOtherUserMRs,
+  getUserMRs,
+  getRedmineIssue,
   buildRanking,
   type TimeScope,
   type UserHours,
 } from './utils/api';
 import { fetchAndProcessTickets } from './utils/ticketSyncEngine';
-import { ticketStateKey } from './utils/ticketSyncRules';
 import {
   hasOriginPermission,
   permissionErrorMessage,
@@ -125,6 +126,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       getMRLatestPipelineStatus,
       checkMRDiscussions,
       getOtherUserMRs,
+      getUserMRs,
+      getRedmineIssue,
     };
 
     if (apiFunctions[action]) {
@@ -235,7 +238,7 @@ async function runTicketSyncBackground(): Promise<void> {
     if (!(await hasOriginPermission(settings.redmineUrl))) return;
     if (!(await hasOriginPermission(settings.gitlabUrl))) return;
     
-    const groupedTickets = await fetchAndProcessTickets(
+    const tickets = await fetchAndProcessTickets(
       settings.redmineUrl,
       settings.redmineApiKey,
       settings.gitlabUrl,
@@ -243,37 +246,35 @@ async function runTicketSyncBackground(): Promise<void> {
     );
     
     const result = await chrome.storage.local.get(['knownTicketStates']);
-    const knownTicketStates = (result.knownTicketStates || {}) as Record<number, string>;
-    const newKnownStates = { ...knownTicketStates };
+    const knownTicketStates = (result.knownTicketStates || {}) as Record<string, string>;
+    const newKnownStates: Record<string, string> = { ...knownTicketStates };
     
-    const targetStates = ['conflicts', 'review', 'ready', 'test_failed'];
     let notificationsCount = 0;
-    const seenTicketIds = new Set<number>();
 
-    for (const group of groupedTickets) {
-      for (const ticket of group.tickets) {
-        if (seenTicketIds.has(ticket.id)) continue;
-        seenTicketIds.add(ticket.id);
+    for (const ticket of tickets) {
+      const ticketKey = ticket.id !== null ? String(ticket.id) : (ticket.mrs[0]?.url || 'unknown');
+      const problemFlags: string[] = [];
+      for (const mr of ticket.mrs) {
+        if (mr.has_conflicts && !problemFlags.includes('conflict')) problemFlags.push('conflict');
+        if (mr.has_failed_pipeline && !problemFlags.includes('test_failed')) problemFlags.push('test_failed');
+        if (mr.has_open_review && !problemFlags.includes('review')) problemFlags.push('review');
+      }
 
-        const previousState = knownTicketStates[ticket.id];
-        const currentState = ticketStateKey(ticket.evaluations);
-        newKnownStates[ticket.id] = currentState;
+      const currentState = problemFlags.sort().join(',');
+      const previousState = knownTicketStates[ticketKey];
+      newKnownStates[ticketKey] = currentState;
 
-        const isNotifiable = ticket.evaluations.some((e) => targetStates.includes(e));
-        if (currentState !== previousState && isNotifiable) {
-          notificationsCount++;
-          if (notificationsCount <= 3) {
-            const label = ticket.evaluations
-              .map((key) => groupedTickets.find((g) => g.key === key)?.label ?? key)
-              .join(' + ');
-            chrome.notifications.create(`ticket-sync-${ticket.id}-${Date.now()}`, {
-              type: 'basic',
-              iconUrl: 'public/icons/icon128.png',
-              title: `Ticket Sync: ${label}`,
-              message: `Ticket #${ticket.id}: ${ticket.title} is now "${label}"`,
-              priority: 2
-            });
-          }
+      if (currentState && currentState !== previousState) {
+        notificationsCount++;
+        if (notificationsCount <= 3) {
+          const label = problemFlags.join(', ');
+          chrome.notifications.create(`ticket-sync-${ticketKey}-${Date.now()}`, {
+            type: 'basic',
+            iconUrl: 'public/icons/icon128.png',
+            title: `Ticket Sync: ${ticket.title}`,
+            message: `${ticket.id !== null ? `Ticket #${ticket.id}` : 'MR'}: ${ticket.title} has updates (${label})`,
+            priority: 2
+          });
         }
       }
     }
@@ -289,7 +290,7 @@ async function runTicketSyncBackground(): Promise<void> {
     }
     
     await chrome.storage.local.set({ 
-      cachedTicketGroups: groupedTickets,
+      cachedTickets: tickets,
       knownTicketStates: newKnownStates
     });
     

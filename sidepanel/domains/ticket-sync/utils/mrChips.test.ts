@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import type { ProcessedMR } from '../types/index'
-import { getMRStatuses, getChipStatusForGroup } from './mrChips'
+import { getMRStatusFlags, isReadyToTest, MR_STATUS_FLAG_CONFIG } from './mrChips'
+import type { ProcessedMR, ProcessedTicket } from '../types/index'
 
 function createMR(overrides: Partial<ProcessedMR> = {}): ProcessedMR {
   return {
@@ -16,129 +16,116 @@ function createMR(overrides: Partial<ProcessedMR> = {}): ProcessedMR {
   }
 }
 
-describe('getMRStatuses', () => {
-  it('returns open for a clean opened MR', () => {
-    expect(getMRStatuses(createMR())).toEqual(['open'])
+function createTicket(overrides: Partial<ProcessedTicket> = {}): ProcessedTicket {
+  return {
+    id: 123,
+    title: 'Fix issue',
+    url: 'https://redmine.example.com/issues/123',
+    status: 'Resolved',
+    mrs: [createMR({ state: 'merged' })],
+    ...overrides,
+  }
+}
+
+describe('mrChips / getMRStatusFlags', () => {
+  it('returns [open] for a clean opened MR', () => {
+    expect(getMRStatusFlags(createMR())).toEqual(['open'])
   })
 
-  it('returns merged / closed for terminal states', () => {
-    expect(getMRStatuses(createMR({ state: 'merged' }))).toEqual(['merged'])
-    expect(getMRStatuses(createMR({ state: 'closed' }))).toEqual(['closed'])
+  it('returns [merged] for a clean merged MR', () => {
+    expect(getMRStatusFlags(createMR({ state: 'merged' }))).toEqual(['merged'])
   })
 
-  it('lists problem statuses in severity order: failed > conflict > review', () => {
-    expect(
-      getMRStatuses(
-        createMR({
-          has_failed_pipeline: true,
-          has_conflicts: true,
-          has_open_review: true,
-        }),
-      ),
-    ).toEqual(['failed', 'conflict', 'review'])
+  it('returns [draft] for a clean draft opened MR', () => {
+    expect(getMRStatusFlags(createMR({ is_draft: true }))).toEqual(['draft'])
   })
 
-  it('does not fall through to open/merged when any problem flag is set', () => {
-    expect(getMRStatuses(createMR({ state: 'merged', has_open_review: true }))).toEqual(['review'])
-    expect(getMRStatuses(createMR({ state: 'opened', has_conflicts: true }))).toEqual(['conflict'])
+  it('returns [has_review] and hides [open] when review comments exist', () => {
+    expect(getMRStatusFlags(createMR({ has_open_review: true }))).toEqual(['has_review'])
   })
 
-  it('returns only failed when that is the sole problem', () => {
-    expect(getMRStatuses(createMR({ has_failed_pipeline: true }))).toEqual(['failed'])
+  it('returns [test_failed] and hides [open] when pipeline failed', () => {
+    expect(getMRStatusFlags(createMR({ has_failed_pipeline: true }))).toEqual(['test_failed'])
+  })
+
+  it('returns [conflict] and hides [open] when conflicts exist', () => {
+    expect(getMRStatusFlags(createMR({ has_conflicts: true }))).toEqual(['conflict'])
+  })
+
+  it('returns multiple flags including draft and problem flags', () => {
+    const mr = createMR({
+      state: 'opened',
+      is_draft: true,
+      has_open_review: true,
+      has_failed_pipeline: true,
+      has_conflicts: true,
+    })
+    expect(getMRStatusFlags(mr)).toEqual([
+      'draft',
+      'has_review',
+      'test_failed',
+      'conflict',
+    ])
+  })
+
+  it('has valid labels and classNames for all status flags in MR_STATUS_FLAG_CONFIG', () => {
+    const flags = ['open', 'merged', 'draft', 'has_review', 'test_failed', 'conflict'] as const
+    for (const flag of flags) {
+      const config = MR_STATUS_FLAG_CONFIG[flag]
+      expect(config).toBeDefined()
+      expect(config.label).toBeTruthy()
+      expect(config.className).toBeTruthy()
+    }
   })
 })
 
-describe('getChipStatusForGroup', () => {
-  const multiStatusMR = createMR({
-    iid: 10,
-    repo: 'repo-b',
-    has_failed_pipeline: true,
-    has_open_review: true,
-  })
-
-  const cleanOpenMR = createMR({
-    iid: 3,
-    repo: 'repo-c',
-  })
-
-  const conflictOnlyMR = createMR({
-    iid: 99,
-    has_conflicts: true,
-  })
-
-  it('prefers group-matching status when MR has failed+review', () => {
-    expect(getChipStatusForGroup(multiStatusMR, 'test_failed')).toBe('failed')
-    expect(getChipStatusForGroup(multiStatusMR, 'review')).toBe('review')
-  })
-
-  it('keeps sibling MRs on their own status inside a problem group', () => {
-    // repo-c is only open — still shows open inside Test Failed / Review
-    expect(getChipStatusForGroup(cleanOpenMR, 'test_failed')).toBe('open')
-    expect(getChipStatusForGroup(cleanOpenMR, 'review')).toBe('open')
-    expect(getChipStatusForGroup(cleanOpenMR, 'conflicts')).toBe('open')
-  })
-
-  it('uses primary severity when group has no matching status on the MR', () => {
-    // failed+review MR inside conflicts group → no conflict flag → primary is failed
-    expect(getChipStatusForGroup(multiStatusMR, 'conflicts')).toBe('failed')
-    // conflict-only MR inside test_failed → primary is conflict
-    expect(getChipStatusForGroup(conflictOnlyMR, 'test_failed')).toBe('conflict')
-  })
-
-  it('prefers conflict when MR has conflict and group is conflicts', () => {
-    const mr = createMR({ has_conflicts: true, has_open_review: true, has_failed_pipeline: true })
-    expect(getChipStatusForGroup(mr, 'conflicts')).toBe('conflict')
-    expect(getChipStatusForGroup(mr, 'test_failed')).toBe('failed')
-    expect(getChipStatusForGroup(mr, 'review')).toBe('review')
-  })
-
-  it('shows merged pill in ready group and open pill in open group', () => {
-    const merged = createMR({ state: 'merged' })
-    const opened = createMR({ state: 'opened' })
-    expect(getChipStatusForGroup(merged, 'ready')).toBe('merged')
-    expect(getChipStatusForGroup(opened, 'open')).toBe('open')
-  })
-
-  it('falls back to primary for draft/others groups without a chip mapping', () => {
-    expect(getChipStatusForGroup(multiStatusMR, 'draft')).toBe('failed')
-    expect(getChipStatusForGroup(multiStatusMR, 'others')).toBe('failed')
-    expect(getChipStatusForGroup(cleanOpenMR, 'draft')).toBe('open')
-  })
-
-  it('covers a multi-MR ticket: chips per group for each MR', () => {
-    const repoB = createMR({
-      iid: 10,
-      repo: 'repo-b',
-      has_failed_pipeline: true,
-      has_open_review: true,
+describe('isReadyToTest', () => {
+  it('returns true when ticket is resolved and its single MR is merged', () => {
+    const ticket = createTicket({
+      status: 'Resolved',
+      mrs: [createMR({ state: 'merged' })],
     })
-    const repoC = createMR({ iid: 3, repo: 'repo-c' })
-    const repoA = createMR({
-      iid: 11,
-      repo: 'repo-a',
-      has_failed_pipeline: true,
-      has_open_review: true,
-    })
-    const mrs = [repoB, repoC, repoA]
-
-    // Test Failed: matching MRs show failed; sibling keeps open
-    expect(mrs.map((mr) => getChipStatusForGroup(mr, 'test_failed'))).toEqual([
-      'failed',
-      'open',
-      'failed',
-    ])
-
-    // Has Open Review: matching MRs show review; sibling keeps open
-    expect(mrs.map((mr) => getChipStatusForGroup(mr, 'review'))).toEqual([
-      'review',
-      'open',
-      'review',
-    ])
+    expect(isReadyToTest(ticket)).toBe(true)
   })
 
-  it('does not invent open when only problem flags exist', () => {
-    const mr = createMR({ has_failed_pipeline: true, has_open_review: true })
-    // open group has mapping, but MR is not a clean open — no open in statuses
-    expect(getChipStatusForGroup(mr, 'open')).toBe('failed')
+  it('returns true when ticket is resolved (case-insensitive) and all MRs are merged', () => {
+    const ticket = createTicket({
+      status: 'resolved',
+      mrs: [createMR({ state: 'merged' }), createMR({ iid: 2, state: 'merged' })],
+    })
+    expect(isReadyToTest(ticket)).toBe(true)
+  })
+
+  it('returns false when ticket is resolved but one MR is still opened', () => {
+    const ticket = createTicket({
+      status: 'Resolved',
+      mrs: [createMR({ state: 'merged' }), createMR({ iid: 2, state: 'opened' })],
+    })
+    expect(isReadyToTest(ticket)).toBe(false)
+  })
+
+  it('returns false when MRs are merged but ticket is not resolved', () => {
+    const ticket = createTicket({
+      status: 'In Progress',
+      mrs: [createMR({ state: 'merged' })],
+    })
+    expect(isReadyToTest(ticket)).toBe(false)
+  })
+
+  it('returns false when ticket has no id (untracked MR)', () => {
+    const ticket = createTicket({
+      id: null,
+      status: undefined,
+      mrs: [createMR({ state: 'merged' })],
+    })
+    expect(isReadyToTest(ticket)).toBe(false)
+  })
+
+  it('returns false when ticket has no MRs', () => {
+    const ticket = createTicket({
+      status: 'Resolved',
+      mrs: [],
+    })
+    expect(isReadyToTest(ticket)).toBe(false)
   })
 })

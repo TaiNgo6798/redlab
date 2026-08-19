@@ -1,10 +1,20 @@
-export type TicketEvaluation = 'ready' | 'conflicts' | 'test_failed' | 'review' | 'draft' | 'open' | 'others'
+export type MRStatusFlag =
+  | 'test_failed'
+  | 'conflict'
+  | 'merged'
+  | 'open'
+  | 'draft'
+  | 'has_review'
+
+export type MRState = 'merged' | 'opened' | 'closed' | string
 
 export interface ProcessedMR {
+  id?: number
   iid: number
   repo: string
   url: string
-  state: string
+  title?: string
+  state: MRState
   has_conflicts: boolean
   has_open_review: boolean
   is_draft: boolean
@@ -12,17 +22,10 @@ export interface ProcessedMR {
 }
 
 export interface ProcessedTicket {
-  id: number
+  id: number | null
   title: string
-  url: string
+  url?: string
+  status?: string
   mrs: ProcessedMR[]
-  /** All groups this ticket belongs to (can be more than one, e.g. conflicts + review). */
-  evaluations: TicketEvaluation[]
 }
 
-export interface TicketGroup {
-  key: TicketEvaluation
-  label: string
-  description?: string
-  tickets: ProcessedTicket[]
-}

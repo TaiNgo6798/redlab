@@ -498,15 +498,45 @@ export async function checkMRDiscussions(
   return hasOpenReview(discussions, currentUserId, approved)
 }
 
-export async function getOtherUserMRs(
+export interface RedmineIssue {
+  id: number
+  subject: string
+  status: {
+    id: number
+    name: string
+  }
+}
+
+export async function getRedmineIssue(
+  redmineUrl: string,
+  redmineApiKey: string,
+  issueId: number,
+): Promise<RedmineIssue | null> {
+  if (!isBackground) {
+    return apiCall<RedmineIssue | null>('getRedmineIssue', [redmineUrl, redmineApiKey, issueId])
+  }
+
+  const response = await freshFetch(`${redmineUrl}/issues/${issueId}.json`, {
+    headers: redmineHeaders(redmineApiKey),
+  })
+
+  if (!response.ok) {
+    return null
+  }
+
+  const data = (await response.json()) as { issue: RedmineIssue }
+  return data.issue || null
+}
+
+export async function getUserMRs(
   gitlabUrl: string,
   gitlabToken: string,
   userId: number,
 ): Promise<GitlabMR[]> {
-  if (!isBackground) return apiCall<GitlabMR[]>('getOtherUserMRs', [gitlabUrl, gitlabToken, userId])
+  if (!isBackground) return apiCall<GitlabMR[]>('getUserMRs', [gitlabUrl, gitlabToken, userId])
 
   const headers = { 'PRIVATE-TOKEN': gitlabToken }
-  const [authoredRes, assignedRes] = await Promise.all([
+  const [authoredRes, assignedRes, reviewerRes] = await Promise.all([
     freshFetch(
       `${gitlabUrl}/api/v4/merge_requests?author_id=${userId}&state=opened&per_page=100&with_merge_status_recheck=true`,
       { headers },
@@ -515,15 +545,29 @@ export async function getOtherUserMRs(
       `${gitlabUrl}/api/v4/merge_requests?assignee_id=${userId}&state=opened&per_page=100&with_merge_status_recheck=true`,
       { headers },
     ),
+    freshFetch(
+      `${gitlabUrl}/api/v4/merge_requests?reviewer_id=${userId}&state=opened&per_page=100&with_merge_status_recheck=true`,
+      { headers },
+    ),
   ])
 
   const authored = authoredRes.ok ? ((await authoredRes.json()) as GitlabMR[]) : []
   const assigned = assignedRes.ok ? ((await assignedRes.json()) as GitlabMR[]) : []
+  const reviewed = reviewerRes.ok ? ((await reviewerRes.json()) as GitlabMR[]) : []
 
   const mrMap = new Map<number, GitlabMR>()
-  for (const mr of [...authored, ...assigned]) {
+  for (const mr of [...authored, ...assigned, ...reviewed]) {
     mrMap.set(mr.id, mr)
   }
 
   return Array.from(mrMap.values())
 }
+
+export async function getOtherUserMRs(
+  gitlabUrl: string,
+  gitlabToken: string,
+  userId: number,
+): Promise<GitlabMR[]> {
+  return getUserMRs(gitlabUrl, gitlabToken, userId)
+}
+

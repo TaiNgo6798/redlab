@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ShowState } from '../../../shared/types/index'
-import type { TicketGroup } from '../types/index'
+import type { ProcessedTicket } from '../types/index'
 import { fetchAndProcessTickets } from '../../../../utils/ticketSyncEngine'
-import { ticketStateKey } from '../../../../utils/ticketSyncRules'
 import { hasOriginPermission, permissionErrorMessage } from '../../../../utils/permissions'
 
 export function useTicketSync() {
-  const [groups, setGroups] = useState<TicketGroup[]>([])
+  const [tickets, setTickets] = useState<ProcessedTicket[]>([])
   const [showState, setShowState] = useState<ShowState>('loading')
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncProgress, setSyncProgress] = useState(0)
@@ -20,9 +19,9 @@ export function useTicketSync() {
     setSyncProgress(0)
 
     try {
-      const cached = await chrome.storage.local.get(['cachedTicketGroups'])
-      if (cached.cachedTicketGroups) {
-        setGroups(cached.cachedTicketGroups as TicketGroup[])
+      const cached = await chrome.storage.local.get(['cachedTickets'])
+      if (cached.cachedTickets) {
+        setTickets(cached.cachedTickets as ProcessedTicket[])
         setShowState('main')
       } else {
         setShowState('loading')
@@ -56,7 +55,7 @@ export function useTicketSync() {
         return
       }
 
-      const groupedTickets = await fetchAndProcessTickets(
+      const processedTickets = await fetchAndProcessTickets(
         redmineUrl,
         redmineApiKey,
         gitlabUrl,
@@ -64,21 +63,25 @@ export function useTicketSync() {
         setSyncProgress
       )
 
-      setGroups(groupedTickets)
+      setTickets(processedTickets)
       setShowState('main')
       
-      void chrome.storage.local.set({ cachedTicketGroups: groupedTickets })
+      void chrome.storage.local.set({ cachedTickets: processedTickets })
 
-      const ticketStates: Record<number, string> = {}
-      for (const group of groupedTickets) {
-        for (const t of group.tickets) {
-          if (ticketStates[t.id]) continue
-          ticketStates[t.id] = ticketStateKey(t.evaluations)
+      const ticketStates: Record<string, string> = {}
+      for (const t of processedTickets) {
+        const ticketKey = t.id !== null ? String(t.id) : (t.mrs[0]?.url || 'unknown')
+        const problemFlags: string[] = []
+        for (const mr of t.mrs) {
+          if (mr.has_conflicts && !problemFlags.includes('conflict')) problemFlags.push('conflict')
+          if (mr.has_failed_pipeline && !problemFlags.includes('test_failed')) problemFlags.push('test_failed')
+          if (mr.has_open_review && !problemFlags.includes('review')) problemFlags.push('review')
         }
+        ticketStates[ticketKey] = problemFlags.sort().join(',')
       }
 
       const result = await chrome.storage.local.get(['knownTicketStates'])
-      const knownTicketStates = (result.knownTicketStates || {}) as Record<number, string>
+      const knownTicketStates = (result.knownTicketStates || {}) as Record<string, string>
       void chrome.storage.local.set({
         knownTicketStates: { ...knownTicketStates, ...ticketStates },
       })
@@ -116,5 +119,7 @@ export function useTicketSync() {
     return () => chrome.storage.onChanged.removeListener(onStorageChanged)
   }, [fetchData])
 
-  return { groups, showState, error, isSyncing, syncProgress, refresh: fetchData }
+  return { tickets, showState, error, isSyncing, syncProgress, refresh: fetchData }
 }
+
+
