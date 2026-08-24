@@ -302,7 +302,7 @@ export function TicketSyncView({
 
           {/* Sync Progress */}
           {isSyncing && (
-            <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-bg-card border border-white/5">
+            <PanelCard className="flex flex-col gap-1.5 p-3">
               <div className="flex justify-between text-xs text-text-secondary">
                 <span className="flex items-center gap-1.5">
                   <SyncOutlined spin className="text-accent-light" />
@@ -316,7 +316,7 @@ export function TicketSyncView({
                 size={['100%', 4]}
                 strokeColor={{ from: 'var(--color-accent-light)', to: 'var(--color-success)' }}
               />
-            </div>
+            </PanelCard>
           )}
 
           {/* Ticket List */}

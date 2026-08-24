@@ -5,7 +5,6 @@
 npm run bump patch
 
 # Sync manifest.json version from package.json
-PKG_VERSION=$(node -p "require('./package.json').version")
-sed -i '' "s/\"version\": \".*\"/\"version\": \"$PKG_VERSION\"/" manifest.json
+node -e "const fs = require('fs'); const p = require('./package.json'); const m = require('./manifest.json'); m.version = p.version; fs.writeFileSync('./manifest.json', JSON.stringify(m, null, 2) + '\n');"
 
 git add package.json manifest.json package-lock.json
