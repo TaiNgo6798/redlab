@@ -6,6 +6,7 @@ import {
   getMRLatestPipelineStatus,
   checkMRDiscussions,
   getRedmineIssue,
+  getResolvedTickets,
   type GitlabMR,
 } from './api';
 import type { ProcessedTicket, ProcessedMR } from '../sidepanel/domains/ticket-sync/types/index';
@@ -77,13 +78,13 @@ export async function fetchAndProcessTickets(
   gitlabToken: string,
   onProgress?: (progress: number) => void
 ): Promise<ProcessedTicket[]> {
-  const gitlabUser = await getGitlabUser(gitlabUrl, gitlabToken);
+  const [gitlabUser, resolvedTickets] = await Promise.all([
+    getGitlabUser(gitlabUrl, gitlabToken),
+    redmineUrl && redmineApiKey
+      ? getResolvedTickets(redmineUrl, redmineApiKey).catch(() => [])
+      : Promise.resolve([]),
+  ]);
   const userMRs = await getUserMRs(gitlabUrl, gitlabToken, gitlabUser.id);
-
-  if (userMRs.length === 0) {
-    onProgress?.(100);
-    return [];
-  }
 
   const ticketIdMap = new Map<number, GitlabMR[]>();
   const unticketedMRs: GitlabMR[] = [];
@@ -97,6 +98,17 @@ export async function fetchAndProcessTickets(
     } else {
       unticketedMRs.push(mr);
     }
+  }
+
+  for (const resolved of resolvedTickets) {
+    if (!ticketIdMap.has(resolved.id)) {
+      ticketIdMap.set(resolved.id, []);
+    }
+  }
+
+  if (userMRs.length === 0 && ticketIdMap.size === 0) {
+    onProgress?.(100);
+    return [];
   }
 
   const uniqueTicketIds = Array.from(ticketIdMap.keys());
@@ -132,6 +144,10 @@ export async function fetchAndProcessTickets(
         }
 
         const allMRs = Array.from(mrMap.values());
+        if (allMRs.length === 0) {
+          return;
+        }
+
         const processedMRs = await Promise.all(
           allMRs.map((mr) => processMR(gitlabUrl, gitlabToken, mr, gitlabUser.id)),
         );

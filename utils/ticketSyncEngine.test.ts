@@ -99,6 +99,7 @@ describe('ticketSyncEngine', () => {
     const getMRLatestPipelineStatusMock = vi.mocked(api.getMRLatestPipelineStatus);
     const checkMRDiscussionsMock = vi.mocked(api.checkMRDiscussions);
     const getRedmineIssueMock = vi.mocked(api.getRedmineIssue);
+    const getResolvedTicketsMock = vi.mocked(api.getResolvedTickets);
 
     beforeEach(() => {
       getGitlabUserMock.mockResolvedValue({ id: 1, username: 'testuser', name: 'Test User' });
@@ -108,10 +109,69 @@ describe('ticketSyncEngine', () => {
       getMRLatestPipelineStatusMock.mockResolvedValue(null);
       checkMRDiscussionsMock.mockResolvedValue(false);
       getRedmineIssueMock.mockResolvedValue(null);
+      getResolvedTicketsMock.mockResolvedValue([]);
     });
 
-    it('returns empty list if user has no MRs', async () => {
+    it('returns empty list if user has no MRs and no resolved tickets', async () => {
       const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+      expect(result).toEqual([]);
+    });
+
+    it('discovers resolved tickets with merged MRs from Redmine even if no open MRs exist', async () => {
+      getUserMRsMock.mockResolvedValue([]);
+      getResolvedTicketsMock.mockResolvedValue([
+        {
+          id: 13381,
+          title: 'Remove fk.user cookie',
+          url: 'https://redmine.test/issues/13381',
+        },
+      ]);
+      searchGitlabMRsMock.mockResolvedValue([
+        {
+          id: 19444,
+          iid: 2147,
+          title: '[#13381] Drop leftover fk.user comments',
+          web_url: 'https://gitlab.test/api-next/-/merge_requests/2147',
+          state: 'merged',
+          project_id: 201,
+          has_conflicts: false,
+        },
+      ]);
+      getRedmineIssueMock.mockResolvedValue({
+        id: 13381,
+        subject: 'Remove fk.user cookie and proxy auth gate',
+        status: { id: 3, name: 'Resolved' },
+      });
+
+      const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(13381);
+      expect(result[0].title).toBe('Remove fk.user cookie and proxy auth gate');
+      expect(result[0].status).toBe('Resolved');
+      expect(result[0].mrs).toHaveLength(1);
+      expect(result[0].mrs[0].state).toBe('merged');
+      expect(result[0].mrs[0].repo).toBe('api-next');
+    });
+
+    it('ignores resolved Redmine tickets if 0 MRs are found on GitLab', async () => {
+      getUserMRsMock.mockResolvedValue([]);
+      getResolvedTicketsMock.mockResolvedValue([
+        {
+          id: 99999,
+          title: 'Non-code task',
+          url: 'https://redmine.test/issues/99999',
+        },
+      ]);
+      searchGitlabMRsMock.mockResolvedValue([]);
+      getRedmineIssueMock.mockResolvedValue({
+        id: 99999,
+        subject: 'Non-code task',
+        status: { id: 3, name: 'Resolved' },
+      });
+
+      const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+
       expect(result).toEqual([]);
     });
 
