@@ -7,6 +7,7 @@ import {
 } from '../../../../utils/permissions'
 import {
   DEFAULT_SETTINGS,
+  parseTimelogSyncInterval,
   type ConnectionStatus,
   type Settings,
   type StatusType,
@@ -58,7 +59,14 @@ export function validateSettings(data: Settings): { ok: true; data: Settings } |
   if (Object.keys(errors).length) return { ok: false, errors }
   return {
     ok: true,
-    data: { ...data, redmineUrl, redmineApiKey, gitlabUrl, gitlabToken },
+    data: {
+      ...data,
+      redmineUrl,
+      redmineApiKey,
+      gitlabUrl,
+      gitlabToken,
+      timelogSyncInterval: parseTimelogSyncInterval(data.timelogSyncInterval),
+    },
   }
 }
 
@@ -73,6 +81,7 @@ function toFormData(saved: Partial<Settings>): Settings {
     badgeTimeScope: saved.badgeTimeScope || 'month',
     hoursPerDay: saved.hoursPerDay || 6.5,
     projectId: saved.projectId ?? null,
+    timelogSyncInterval: parseTimelogSyncInterval(saved.timelogSyncInterval),
   }
 }
 
@@ -87,6 +96,7 @@ function serializeSettings(s: Settings): string {
     badgeTimeScope: s.badgeTimeScope,
     hoursPerDay: s.hoursPerDay,
     projectId: s.projectId,
+    timelogSyncInterval: s.timelogSyncInterval,
   })
 }
 

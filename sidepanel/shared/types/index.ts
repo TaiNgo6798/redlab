@@ -7,6 +7,32 @@ export type ConnectionStatus = { message: string; type: StatusType }
 export type StatsErrorKind = 'not_configured' | 'permission' | 'other'
 export type BadgeTimeScope = 'today' | 'week' | 'month'
 
+export enum TimelogSyncInterval {
+  OneMinute = 1,
+  FiveMinutes = 5,
+  FifteenMinutes = 15,
+  ThirtyMinutes = 30,
+  OneHour = 60,
+}
+
+export const TIMELOG_SYNC_INTERVAL_OPTIONS: { value: TimelogSyncInterval; label: string }[] = [
+  { value: TimelogSyncInterval.OneMinute, label: '1 min' },
+  { value: TimelogSyncInterval.FiveMinutes, label: '5 min' },
+  { value: TimelogSyncInterval.FifteenMinutes, label: '15 min' },
+  { value: TimelogSyncInterval.ThirtyMinutes, label: '30 min' },
+  { value: TimelogSyncInterval.OneHour, label: '1 hour' },
+]
+
+const TIMELOG_SYNC_INTERVALS = new Set<number>(
+  TIMELOG_SYNC_INTERVAL_OPTIONS.map(option => option.value),
+)
+
+export function parseTimelogSyncInterval(value: unknown): TimelogSyncInterval {
+  return TIMELOG_SYNC_INTERVALS.has(value as number)
+    ? (value as TimelogSyncInterval)
+    : TimelogSyncInterval.OneMinute
+}
+
 export interface Settings {
   redmineUrl: string
   redmineApiKey: string
@@ -17,6 +43,7 @@ export interface Settings {
   badgeTimeScope: BadgeTimeScope
   hoursPerDay: number
   projectId: string | null
+  timelogSyncInterval: TimelogSyncInterval
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -29,6 +56,7 @@ export const DEFAULT_SETTINGS: Settings = {
   badgeTimeScope: 'month',
   hoursPerDay: 6.5,
   projectId: null,
+  timelogSyncInterval: TimelogSyncInterval.OneMinute,
 }
 
 export interface OverviewSettings {

@@ -1,6 +1,6 @@
 {
   "name": "redlab",
-  "version": "1.1.49",
+  "version": "1.1.50",
   "description": "Chrome extension for teams that use Redmine and GitLab: time tracking, hours leaderboard, ticket-to-merge-request sync, and local OTP.",
   "repository": {
     "type": "git",

@@ -77,6 +77,8 @@ function App() {
           onRetry={overview.loadData}
           onSync={() => overview.syncData()}
           onConfigure={() => handleSetView('settings')}
+          syncInterval={settings.settings.timelogSyncInterval}
+          onSyncIntervalChange={(interval) => settings.handleSettingsChange({ timelogSyncInterval: interval })}
         />
       )}
 

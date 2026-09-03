@@ -29,6 +29,7 @@ import {
 import { generateTotp, OTP_STEP_SECONDS } from './utils/totp';
 import {
   DEFAULT_SETTINGS,
+  parseTimelogSyncInterval,
   type CachedStats,
   type Settings,
   type Stats,
@@ -40,32 +41,38 @@ interface OtpAuthenticator {
   secret: string;
 }
 
-const UPDATE_INTERVAL = 1;
+enum AlarmName {
+  UpdateBadge = 'updateBadge',
+  TicketSync = 'ticketSync',
+}
+
 const OTP_STORAGE_KEY = 'otpAuthenticators';
 
 // ============== Alarms ==============
 
-// Initialize alarms
-chrome.alarms.create('updateBadge', { periodInMinutes: UPDATE_INTERVAL });
-chrome.alarms.create('ticketSync', { periodInMinutes: 5 });
+void scheduleBadgeAlarm();
+chrome.alarms.create(AlarmName.TicketSync, { periodInMinutes: 5 });
 
-// Listen for alarm
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'updateBadge') {
+  if (alarm.name === AlarmName.UpdateBadge) {
     void updateBadge();
-  } else if (alarm.name === 'ticketSync') {
+  } else if (alarm.name === AlarmName.TicketSync) {
     void runTicketSyncBackground();
   }
 });
 
 // ============== Storage Listeners ==============
 
-// Listen for storage changes
 chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'sync') {
-    void chrome.storage.local.remove('cachedStats');
-    void updateBadge();
-  }
+  if (namespace !== 'sync') return;
+
+  const intervalChanged = changes.timelogSyncInterval !== undefined;
+  const onlyIntervalChanged = intervalChanged && Object.keys(changes).length === 1;
+  if (intervalChanged) void scheduleBadgeAlarm();
+  if (onlyIntervalChanged) return;
+
+  void chrome.storage.local.remove('cachedStats');
+  void updateBadge();
 });
 
 // ============== Message Listeners ==============
@@ -165,58 +172,45 @@ chrome.action.onClicked.addListener((tab) => {
 // ============== Badge Update ==============
 
 /**
+ * Paint the icon badge from the same stats object the sidebar cache uses.
+ */
+function paintBadge(stats: Stats): void {
+  if (stats.errorKind === 'not_configured') {
+    chrome.action.setBadgeText({ text: '?' });
+    chrome.action.setBadgeBackgroundColor({ color: '#888888' });
+    return;
+  }
+
+  if (stats.error) {
+    chrome.action.setBadgeText({ text: '!' });
+    chrome.action.setBadgeBackgroundColor({
+      color: stats.errorKind === 'permission' ? '#FFA726' : '#FF0000',
+    });
+    return;
+  }
+
+  const displayHours = stats.settings.badgeDisplayType === 'remaining'
+    ? stats.remainingHours
+    : stats.loggedHours;
+
+  let color: string;
+  if (stats.settings.badgeDisplayType === 'remaining') {
+    color = displayHours > 0 ? '#FF6B6B' : '#4CAF50';
+  } else {
+    const progress = stats.loggedHours / stats.expectedHours;
+    color = progress >= 1 ? '#4CAF50' : progress >= 0.8 ? '#FFA726' : '#FF6B6B';
+  }
+
+  chrome.action.setBadgeText({ text: formatBadgeText(displayHours) });
+  chrome.action.setBadgeBackgroundColor({ color });
+}
+
+/**
  * Update the extension badge with current hours
  */
 async function updateBadge(): Promise<void> {
   try {
-    const settings = await getSettings();
-
-    if (!settings.redmineUrl || !settings.redmineApiKey) {
-      chrome.action.setBadgeText({ text: '?' });
-      chrome.action.setBadgeBackgroundColor({ color: '#888888' });
-      return;
-    }
-
-    if (!(await hasOriginPermission(settings.redmineUrl))) {
-      chrome.action.setBadgeText({ text: '!' });
-      chrome.action.setBadgeBackgroundColor({ color: '#FFA726' });
-      return;
-    }
-
-    const user = await getCurrentUser(settings.redmineUrl, settings.redmineApiKey);
-    const entries = await getTimeEntries(
-      settings.redmineUrl,
-      settings.redmineApiKey,
-      user.id,
-      settings.badgeTimeScope
-    );
-
-    const loggedHours = calculateTotalHours(entries);
-    let displayHours: number;
-
-    if (settings.badgeDisplayType === 'remaining') {
-      const expectedHours = calculateExpectedHours(settings.badgeTimeScope, settings.hoursPerDay);
-      displayHours = Math.max(0, expectedHours - loggedHours);
-    } else {
-      displayHours = loggedHours;
-    }
-
-    // Format for badge (max 4 chars)
-    const badgeText = formatBadgeText(displayHours);
-
-    // Color based on display type and progress
-    let color: string;
-    if (settings.badgeDisplayType === 'remaining') {
-      color = displayHours > 0 ? '#FF6B6B' : '#4CAF50';
-    } else {
-      const expectedHours = calculateExpectedHours(settings.badgeTimeScope, settings.hoursPerDay);
-      const progress = loggedHours / expectedHours;
-      color = progress >= 1 ? '#4CAF50' : progress >= 0.8 ? '#FFA726' : '#FF6B6B';
-    }
-
-    chrome.action.setBadgeText({ text: badgeText });
-    chrome.action.setBadgeBackgroundColor({ color });
-
+    paintBadge(await getStats());
   } catch (error) {
     console.error('Failed to update badge:', error);
     chrome.action.setBadgeText({ text: '!' });
@@ -540,7 +534,18 @@ function calculateExpectedHours(scope: TimeScope, hoursPerDay: number): number {
  */
 async function getSettings(): Promise<Settings> {
   const result = await chrome.storage.sync.get(DEFAULT_SETTINGS as unknown as Record<string, unknown>) as Partial<Settings>;
-  return { ...DEFAULT_SETTINGS, ...result };
+  return {
+    ...DEFAULT_SETTINGS,
+    ...result,
+    timelogSyncInterval: parseTimelogSyncInterval(result.timelogSyncInterval),
+  };
+}
+
+async function scheduleBadgeAlarm(): Promise<void> {
+  const settings = await getSettings();
+  await chrome.alarms.create(AlarmName.UpdateBadge, {
+    periodInMinutes: parseTimelogSyncInterval(settings.timelogSyncInterval),
+  });
 }
 
 /**

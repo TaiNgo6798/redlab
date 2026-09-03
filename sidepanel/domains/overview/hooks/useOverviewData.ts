@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { OverviewSettings, ShowState, Stats, StatsUser, UserHours } from '../../../shared/types/index'
+import type { CachedStats, OverviewSettings, ShowState, Stats, StatsUser, UserHours } from '../../../shared/types/index'
 
-async function getCachedStats() {
-  return await chrome.runtime.sendMessage({ action: 'getCachedStats' }) as any
+async function getCachedStats(): Promise<CachedStats | null> {
+  const { cachedStats } = await chrome.storage.local.get('cachedStats')
+  return (cachedStats as CachedStats) || null
 }
 
 async function getStats(): Promise<Stats> {
@@ -24,6 +25,15 @@ export function useOverviewData() {
   const [errorMessage, setErrorMessage] = useState('')
 
   const isSyncingRef = useRef(false)
+
+  const applyCached = useCallback((cached: CachedStats) => {
+    setCurrentSettings(cached.stats.settings)
+    setCurrentUser(cached.stats.user)
+    setStats(cached.stats)
+    setRankingData(cached.stats.ranking || [])
+    setLastSyncedAt(cached.lastSyncedAt)
+    setShowState('main')
+  }, [])
 
   const syncData = useCallback(async (isBackgroundSync = false) => {
     if (isSyncingRef.current) return
@@ -88,33 +98,32 @@ export function useOverviewData() {
 
     const cached = await getCachedStats()
     if (cached && cached.stats && !cached.stats.error) {
-      setCurrentSettings(cached.stats.settings)
-      setCurrentUser(cached.stats.user)
-      setStats(cached.stats)
-      setRankingData(cached.stats.ranking || [])
-      setLastSyncedAt(cached.lastSyncedAt)
-      setShowState('main')
+      applyCached(cached)
       syncData(true)
       return
     }
 
     setShowState('loading')
     await syncData(false)
-  }, [syncData])
+  }, [applyCached, syncData])
 
-  // Re-check after first-time credentials are saved (or cleared)
   useEffect(() => {
     const onStorageChanged = (
       changes: { [key: string]: chrome.storage.StorageChange },
       area: string,
     ) => {
+      if (area === 'local' && changes.cachedStats) {
+        const cached = changes.cachedStats.newValue as CachedStats | undefined
+        if (cached?.stats && !cached.stats.error) applyCached(cached)
+        return
+      }
       if (area !== 'sync') return
       if (!changes.redmineUrl && !changes.redmineApiKey) return
       void loadData()
     }
     chrome.storage.onChanged.addListener(onStorageChanged)
     return () => chrome.storage.onChanged.removeListener(onStorageChanged)
-  }, [loadData])
+  }, [applyCached, loadData])
 
   return {
     currentSettings,

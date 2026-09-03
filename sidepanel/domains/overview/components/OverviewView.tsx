@@ -1,10 +1,27 @@
 import { Progress, Spin, Tag, Typography, Button } from 'antd'
-import { ExclamationCircleOutlined, LockOutlined, SettingOutlined, SyncOutlined } from '@ant-design/icons'
-import { useMemo, useState } from 'react'
+import {
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
+  LockOutlined,
+  SettingOutlined,
+  SyncOutlined,
+  ThunderboltFilled,
+} from '@ant-design/icons'
+import { useId, useMemo, useState } from 'react'
 import { GlassSelect } from '../../../shared/components/GlassSelect'
 import { PanelCard } from '../../../shared/components/PanelCard'
 import { formatHours, getTimeAgo } from '../../../shared/utils/time'
-import type { DisplayType, OverviewSettings, ShowState, Stats, StatsUser, UserHours } from '../../../shared/types/index'
+import {
+  parseTimelogSyncInterval,
+  TIMELOG_SYNC_INTERVAL_OPTIONS,
+  TimelogSyncInterval,
+  type DisplayType,
+  type OverviewSettings,
+  type ShowState,
+  type Stats,
+  type StatsUser,
+  type UserHours,
+} from '../../../shared/types/index'
 import { useHistoryStats } from '../hooks/useHistoryStats'
 import { PERIOD_OPTIONS, PERIOD_LABELS, formatPeriodRange, type OverviewPeriod } from '../consts/periods'
 
@@ -13,9 +30,9 @@ const { Text } = Typography
 function StatsCard({ loggedHours, expectedHours, remainingHours }: { loggedHours: number; expectedHours: number; remainingHours: number }) {
   const progress = useMemo(() => expectedHours > 0 ? Math.min(100, (loggedHours / expectedHours) * 100) : 0, [expectedHours, loggedHours])
   const progressColor = useMemo(() => {
-    if (progress >= 100) return '#4CAF50'
-    if (progress >= 80) return { '0%': '#FFA726', '100%': '#4CAF50' }
-    return { '0%': '#007990', '100%': '#FFA726' }
+    if (progress >= 100) return 'var(--color-success)'
+    if (progress >= 80) return { '0%': 'var(--color-warning)', '100%': 'var(--color-success)' }
+    return { '0%': 'var(--color-accent)', '100%': 'var(--color-warning)' }
   }, [progress])
 
   return (
@@ -27,7 +44,17 @@ function StatsCard({ loggedHours, expectedHours, remainingHours }: { loggedHours
         <div className="h-10 w-px bg-white/10"></div>
         <div className="flex flex-col items-center gap-1"><Text type="secondary" className="text-[10px] uppercase tracking-wider">Remaining</Text><span className="text-xl font-bold text-accent-light">{formatHours(remainingHours)}</span></div>
       </section>
-      <section className="mb-4 flex items-center gap-3"><Progress percent={progress} showInfo={false} strokeColor={progressColor} trailColor="#0f3460" size={['100%', 8]} className="flex-1" /><span className="min-w-[45px] text-right text-sm font-semibold">{Math.round(progress)}%</span></section>
+      <section className="mb-4 flex items-center gap-3">
+        <Progress
+          percent={progress}
+          showInfo={false}
+          strokeColor={progressColor}
+          trailColor="var(--color-bg-card)"
+          size={['100%', 8]}
+          className="flex-1"
+        />
+        <span className="min-w-[45px] text-right text-sm font-semibold">{Math.round(progress)}%</span>
+      </section>
     </>
   )
 }
@@ -69,12 +96,122 @@ function RankingSection({ ranking, displayType, expectedHours, periodLabel, hasP
   )
 }
 
-function TodayProgress({ loggedHours = 0, goalHours = 6.5 }: { loggedHours?: number; goalHours?: number }) {
+function TodayProgress({
+  loggedHours = 0,
+  goalHours = 6.5,
+  isSyncing = false,
+  onReload,
+}: {
+  loggedHours?: number
+  goalHours?: number
+  isSyncing?: boolean
+  onReload?: () => void
+}) {
   const percent = goalHours > 0 ? Math.min(100, (loggedHours / goalHours) * 100) : 0
   const remaining = Math.max(0, goalHours - loggedHours)
+  const uid = useId().replace(/:/g, '')
+  const gradId = `${uid}-grad`
+  const electricGradId = `${uid}-electric-grad`
   return (
     <section className="mb-6 flex flex-col items-center rounded-2xl border border-white/10 bg-bg-secondary/50 p-6 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-      <div className="relative mb-4 flex items-center justify-center"><Progress type="circle" percent={percent} strokeColor={{ '0%': '#10b981', '100%': '#22C55E' }} trailColor="rgba(255,255,255,0.05)" strokeWidth={8} width={160} format={() => <div className="flex flex-col items-center"><span className="text-3xl font-extrabold text-text-primary">{loggedHours.toFixed(1)}h</span><span className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">Today</span></div>} /></div>
+      <div
+        className={`relative mb-4 flex h-[160px] w-[160px] items-center justify-center rounded-full outline-none transition-transform duration-200 select-none ${
+          isSyncing
+            ? 'today-progress-circle--syncing cursor-wait'
+            : 'group cursor-pointer hover:scale-[1.02] active:scale-[0.98]'
+        }`}
+        onClick={() => {
+          if (!isSyncing && onReload) onReload()
+        }}
+        role="button"
+        tabIndex={0}
+        aria-busy={isSyncing}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && !isSyncing && onReload) {
+            e.preventDefault()
+            onReload()
+          }
+        }}
+        title={isSyncing ? 'Syncing...' : "Reload today's hours"}
+      >
+        <svg className="pointer-events-none h-full w-full" viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="0" y1="50" x2="100" y2="50">
+              <stop offset="0%" stopColor="var(--color-success)" />
+              <stop offset="100%" stopColor="var(--color-accent-light)" />
+            </linearGradient>
+            <linearGradient id={electricGradId} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="100">
+              <stop offset="0%" stopColor="white" />
+              <stop offset="50%" stopColor="var(--color-accent-light)" />
+              <stop offset="100%" stopColor="var(--color-accent)" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="8" />
+          {isSyncing ? (
+            <>
+              <g transform="rotate(-90 50 50)">
+                <circle
+                  className="today-progress-electric-arc"
+                  cx="50"
+                  cy="50"
+                  r="46"
+                  fill="none"
+                  stroke={`url(#${electricGradId})`}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  pathLength="100"
+                  strokeDasharray={percent > 0 ? `${percent} 100` : '100 100'}
+                />
+              </g>
+              <g className="today-progress-electric-sparks">
+                <circle cx="50" cy="4" r="3.5" />
+                <circle cx="50" cy="96" r="2.5" />
+              </g>
+            </>
+          ) : (
+            percent > 0 && (
+              <g transform="rotate(-90 50 50)">
+                <circle
+                  className="today-progress-arc"
+                  cx="50"
+                  cy="50"
+                  r="46"
+                  fill="none"
+                  stroke={`url(#${gradId})`}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  pathLength="100"
+                  strokeDasharray={`${percent} 100`}
+                />
+              </g>
+            )
+          )}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div
+            className={`flex flex-col items-center transition-all duration-200 ${
+              !isSyncing ? 'group-hover:opacity-0 group-hover:scale-90' : ''
+            }`}
+          >
+            <span
+              className={`text-3xl font-extrabold text-text-primary ${
+                isSyncing ? 'today-progress-electric-text' : ''
+              }`}
+            >
+              {loggedHours.toFixed(1)}h
+            </span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">Today</span>
+            {isSyncing && (
+              <ThunderboltFilled className="today-progress-lightning-icon mt-1 text-sm text-accent-light" />
+            )}
+          </div>
+          {!isSyncing && (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center opacity-0 scale-75 transition-all duration-200 group-hover:opacity-100 group-hover:scale-100">
+              <SyncOutlined className="text-3xl text-accent-light" />
+            </div>
+          )}
+        </div>
+      </div>
       <div className="flex w-full justify-between gap-4 rounded-xl bg-white/5 p-3"><div className="flex flex-col"><Text className="text-[10px] uppercase tracking-wider text-slate-400">Daily Goal</Text><Text className="text-base font-bold text-slate-200">{goalHours.toFixed(1)}h</Text></div><div className="flex flex-col items-end"><Text className="text-[10px] uppercase tracking-wider text-slate-400">Remaining</Text><Text className="text-base font-bold text-accent-light">{remaining.toFixed(1)}h</Text></div></div>
     </section>
   )
@@ -89,9 +226,11 @@ export function OverviewView({
   showState,
   errorMessage,
   isSyncing,
+  syncInterval,
   onRetry,
   onSync,
   onConfigure,
+  onSyncIntervalChange,
 }: {
   currentSettings: OverviewSettings | null
   currentUser: StatsUser | null
@@ -101,9 +240,11 @@ export function OverviewView({
   showState: ShowState
   errorMessage: string
   isSyncing: boolean
+  syncInterval: TimelogSyncInterval
   onRetry: () => void
-  onSync: () => void
+  onSync?: () => void
   onConfigure: () => void
+  onSyncIntervalChange: (interval: TimelogSyncInterval) => void
 }) {
   const [period, setPeriod] = useState<OverviewPeriod>('month')
 
@@ -146,7 +287,12 @@ export function OverviewView({
       {showState === 'loading' && <PanelCard className="flex flex-col items-center justify-center p-10"><Spin size="large" /><Text className="mt-3">Loading...</Text></PanelCard>}
       {showState === 'main' && stats && (
         <>
-          <TodayProgress loggedHours={stats.todayLoggedHours} goalHours={stats.settings?.hoursPerDay || 6.5} />
+          <TodayProgress
+            loggedHours={stats.todayLoggedHours}
+            goalHours={stats.settings?.hoursPerDay || 6.5}
+            isSyncing={isSyncing}
+            onReload={onSync ?? onRetry}
+          />
 
           <section className="mb-3 flex items-center justify-between gap-2">
             <GlassSelect
@@ -158,17 +304,22 @@ export function OverviewView({
             />
             <div className="flex items-center gap-1">
               {isLive ? (
-                <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
-                  </span>
-                  LIVE
+                <span className="flex items-center gap-1 text-xs text-slate-400">
+                  <ClockCircleOutlined />
+                  Cron
                 </span>
               ) : history.data ? (
                 <span className="flex items-center gap-1 text-xs text-slate-400"><LockOutlined />{formatPeriodRange(history.data.from, history.data.to)}</span>
               ) : null}
-              <Button type="text" size="small" icon={<SyncOutlined spin={isSyncing} />} onClick={onSync} title="Sync" />
+              <GlassSelect
+                size="small"
+                value={syncInterval}
+                onChange={(value) => onSyncIntervalChange(parseTimelogSyncInterval(value))}
+                options={TIMELOG_SYNC_INTERVAL_OPTIONS}
+                className="glass-select--pill glass-select--narrow"
+                popupMatchSelectWidth={false}
+                aria-label="Auto-sync interval"
+              />
             </div>
           </section>
 

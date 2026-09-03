@@ -3,3 +3,4 @@ dist
 docs/*
 !docs/chrome-web-store-listing.md
 .env
+.playwright*

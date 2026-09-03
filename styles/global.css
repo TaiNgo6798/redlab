@@ -58,12 +58,6 @@ html.sidepanel #root {
 }
 
 /* Animations */
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @keyframes fadeIn {
   0% {
     opacity: 0;
@@ -77,6 +71,71 @@ html.sidepanel #root {
 
 .fade-in {
   animation: fadeIn 0.3s ease;
+}
+
+.today-progress-arc {
+  transition: stroke-dasharray 0.35s ease;
+}
+
+.today-progress-electric-arc {
+  opacity: 0.85;
+  animation: today-progress-jitter 0.2s infinite ease-in-out;
+}
+
+.today-progress-electric-sparks {
+  fill: white;
+  filter: drop-shadow(0 0 6px var(--color-accent-light)) drop-shadow(0 0 10px var(--color-accent));
+  transform-origin: 50px 50px;
+  animation: today-progress-spark-spin 0.7s linear infinite;
+}
+
+.today-progress-electric-text {
+  text-shadow: 0 0 12px var(--color-accent-light);
+}
+
+.today-progress-lightning-icon {
+  animation: today-progress-flash 0.35s infinite alternate ease-in-out;
+  filter: drop-shadow(0 0 6px var(--color-accent-light));
+}
+
+@keyframes today-progress-spark-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes today-progress-jitter {
+  0% {
+    stroke-width: 7.5;
+  }
+  50% {
+    stroke-width: 8.5;
+  }
+  100% {
+    stroke-width: 8;
+  }
+}
+
+@keyframes today-progress-flash {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-progress-electric-arc,
+  .today-progress-electric-sparks,
+  .today-progress-lightning-icon {
+    animation: none;
+  }
 }
 
 /* Gradient text for special elements */
@@ -216,6 +275,10 @@ html.sidepanel #root {
 
 .glass-select--pill.ant-select {
   min-width: 150px;
+}
+
+.glass-select--pill.glass-select--narrow.ant-select {
+  min-width: 108px;
 }
 
 .glass-select--pill .ant-select-selector {
