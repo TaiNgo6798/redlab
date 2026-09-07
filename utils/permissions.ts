@@ -1,7 +1,29 @@
-/** Host-permission helpers for optional origins (Redmine / GitLab). */
+/** Host-permission helpers for optional origins (Redmine / GitLab / OTP fill). */
 
 export function originPattern(url: string): string {
   return `${url.trim().replace(/\/$/, '')}/*`
+}
+
+export function httpOrigin(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
+    return parsed.origin
+  } catch {
+    return null
+  }
+}
+
+export function originHost(origin: string): string {
+  try {
+    return new URL(origin).host
+  } catch {
+    return origin
+  }
+}
+
+export function originMismatchMessage(origin: string): string {
+  return `This OTP is bound to ${originHost(origin)}`
 }
 
 export async function hasOriginPermission(url: string): Promise<boolean> {

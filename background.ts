@@ -24,9 +24,12 @@ import {
 import { fetchAndProcessTickets } from './utils/ticketSyncEngine';
 import {
   hasOriginPermission,
+  httpOrigin,
+  originMismatchMessage,
   permissionErrorMessage,
 } from './utils/permissions';
 import { generateTotp, OTP_STEP_SECONDS } from './utils/totp';
+import { getActiveTab, injectedFillOtp } from './utils/otpPage';
 import {
   DEFAULT_SETTINGS,
   parseTimelogSyncInterval,
@@ -35,10 +38,16 @@ import {
   type Stats,
 } from './sidepanel/shared/types/index';
 
+interface OtpFillTarget {
+  origin: string;
+  selector: string;
+}
+
 interface OtpAuthenticator {
   id: string;
   name: string;
   secret: string;
+  fillTarget?: OtpFillTarget;
 }
 
 enum AlarmName {
@@ -113,6 +122,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.action === 'importOtpAuthenticators') {
     void importOtpAuthenticators(message.items).then(response => sendResponse(response));
+    return true;
+  }
+  if (message.action === 'setOtpFillTarget') {
+    void setOtpFillTarget(message.id, message.origin, message.selector).then(response => sendResponse(response));
+    return true;
+  }
+  if (message.action === 'fillOtp') {
+    void fillOtp(message.id).then(response => sendResponse(response));
     return true;
   }
 
@@ -293,17 +310,40 @@ async function runTicketSyncBackground(): Promise<void> {
   }
 }
 
+function readString(value: object, key: string): string {
+  return key in value && typeof (value as Record<string, unknown>)[key] === 'string'
+    ? (value as Record<string, string>)[key]
+    : '';
+}
+
+function parseFillTarget(value: unknown): OtpFillTarget | undefined {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const origin = readString(value, 'origin');
+  const selector = readString(value, 'selector');
+  if (!selector || httpOrigin(origin) !== origin) return undefined;
+  return { origin, selector };
+}
+
+function parseOtpAuthenticator(item: unknown): OtpAuthenticator | null {
+  if (typeof item !== 'object' || item === null) return null;
+  const id = readString(item, 'id');
+  const name = readString(item, 'name');
+  const secret = readString(item, 'secret');
+  if (!id || !name || !secret) return null;
+  const authenticator: OtpAuthenticator = { id, name, secret };
+  const fillTarget = parseFillTarget('fillTarget' in item ? item.fillTarget : undefined);
+  if (fillTarget) authenticator.fillTarget = fillTarget;
+  return authenticator;
+}
+
 async function getOtpAuthenticators(): Promise<OtpAuthenticator[]> {
   const result = await chrome.storage.local.get(OTP_STORAGE_KEY);
   const saved = result[OTP_STORAGE_KEY];
   if (!Array.isArray(saved)) return [];
-
-  return saved.filter(
-    (item): item is OtpAuthenticator =>
-      typeof item?.id === 'string' &&
-      typeof item?.name === 'string' &&
-      typeof item?.secret === 'string'
-  );
+  return saved.flatMap((item) => {
+    const parsed = parseOtpAuthenticator(item);
+    return parsed ? [parsed] : [];
+  });
 }
 
 async function parseOtpInput(name: string, secret: string): Promise<{ ok: true; name: string; secret: string } | { ok: false; error: string }> {
@@ -359,9 +399,63 @@ async function removeOtpAuthenticator(id: string): Promise<{ ok: boolean; error?
   return { ok: true };
 }
 
-async function exportOtpAuthenticators(): Promise<{ ok: boolean; items: OtpAuthenticator[] }> {
+async function setOtpFillTarget(id: string, origin: string, selector: string): Promise<{ ok: boolean; error?: string }> {
+  const trimmedId = typeof id === 'string' ? id.trim() : '';
+  const trimmedSelector = typeof selector === 'string' ? selector.trim() : '';
+  const parsedOrigin = typeof origin === 'string' ? httpOrigin(origin) : null;
+  if (!trimmedId) return { ok: false, error: 'Invalid authenticator id.' };
+  if (!parsedOrigin || !trimmedSelector) return { ok: false, error: 'Invalid fill target.' };
+
+  const current = await getOtpAuthenticators();
+  const index = current.findIndex(item => item.id === trimmedId);
+  if (index < 0) return { ok: false, error: 'Authenticator not found.' };
+
+  const next = [...current];
+  next[index] = { ...next[index], fillTarget: { origin: parsedOrigin, selector: trimmedSelector } };
+  await chrome.storage.local.set({ [OTP_STORAGE_KEY]: next });
+  return { ok: true };
+}
+
+async function fillOtp(id: string): Promise<{ ok: boolean; error?: string }> {
+  const trimmedId = typeof id === 'string' ? id.trim() : '';
+  if (!trimmedId) return { ok: false, error: 'Invalid authenticator id.' };
+
+  const authenticator = (await getOtpAuthenticators()).find(item => item.id === trimmedId);
+  if (!authenticator) return { ok: false, error: 'Authenticator not found.' };
+  if (!authenticator.fillTarget) return { ok: false, error: 'Invalid fill target.' };
+
+  const tab = await getActiveTab();
+  if (!tab?.id) return { ok: false, error: 'No page to fill.' };
+
+  const origin = httpOrigin(tab.url ?? '');
+  if (origin !== authenticator.fillTarget.origin) {
+    return { ok: false, error: originMismatchMessage(authenticator.fillTarget.origin) };
+  }
+
+  let code: string;
+  try {
+    code = await generateTotp(authenticator.secret);
+  } catch {
+    return { ok: false, error: 'Invalid secret' };
+  }
+
+  try {
+    const injection = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: injectedFillOtp,
+      args: [authenticator.fillTarget.selector, code],
+    });
+    const result = injection[0]?.result;
+    if (!result?.ok) return { ok: false, error: result?.error || 'No matching field on this page.' };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Cannot fill this page.' };
+  }
+}
+
+async function exportOtpAuthenticators(): Promise<{ ok: boolean; items: { name: string; secret: string }[] }> {
   const items = await getOtpAuthenticators();
-  return { ok: true, items };
+  return { ok: true, items: items.map(({ name, secret }) => ({ name, secret })) };
 }
 
 async function importOtpAuthenticators(items: unknown): Promise<{ ok: boolean; error?: string; count?: number }> {
@@ -410,13 +504,14 @@ function normalizeSecretInput(rawSecret: string): string {
   return value.replace(/[\s-]+/g, '').toUpperCase();
 }
 
-async function getOtpCodes(): Promise<{ stepSeconds: number; generatedAt: number; codes: { id: string; name: string; secret: string; code: string }[] }> {
+async function getOtpCodes(): Promise<{ stepSeconds: number; generatedAt: number; codes: { id: string; name: string; secret: string; code: string; fillOrigin?: string }[] }> {
   const authenticators = await getOtpAuthenticators();
   const codes = await Promise.all(authenticators.map(async (item) => {
+    const fillOrigin = item.fillTarget?.origin;
     try {
-      return { id: item.id, name: item.name, secret: item.secret, code: await generateTotp(item.secret) };
+      return { id: item.id, name: item.name, secret: item.secret, code: await generateTotp(item.secret), fillOrigin };
     } catch {
-      return { id: item.id, name: item.name, secret: item.secret, code: 'Invalid secret' };
+      return { id: item.id, name: item.name, secret: item.secret, code: 'Invalid secret', fillOrigin };
     }
   }));
 

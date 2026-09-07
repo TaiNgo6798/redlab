@@ -122,7 +122,7 @@ describe('ticketSyncEngine', () => {
       getResolvedTicketsMock.mockResolvedValue([
         {
           id: 13381,
-          title: 'Remove fk.user cookie',
+          title: 'Remove legacy session cookie',
           url: 'https://redmine.test/issues/13381',
         },
       ]);
@@ -130,8 +130,8 @@ describe('ticketSyncEngine', () => {
         {
           id: 19444,
           iid: 2147,
-          title: '[#13381] Drop leftover fk.user comments',
-          web_url: 'https://gitlab.test/api-next/-/merge_requests/2147',
+          title: '[#13381] Drop leftover session comments',
+          web_url: 'https://gitlab.test/core-api/-/merge_requests/2147',
           state: 'merged',
           project_id: 201,
           has_conflicts: false,
@@ -139,7 +139,7 @@ describe('ticketSyncEngine', () => {
       ]);
       getRedmineIssueMock.mockResolvedValue({
         id: 13381,
-        subject: 'Remove fk.user cookie and proxy auth gate',
+        subject: 'Remove legacy session cookie and proxy auth gate',
         status: { id: 3, name: 'Resolved' },
       });
 
@@ -147,11 +147,11 @@ describe('ticketSyncEngine', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(13381);
-      expect(result[0].title).toBe('Remove fk.user cookie and proxy auth gate');
+      expect(result[0].title).toBe('Remove legacy session cookie and proxy auth gate');
       expect(result[0].status).toBe('Resolved');
       expect(result[0].mrs).toHaveLength(1);
       expect(result[0].mrs[0].state).toBe('merged');
-      expect(result[0].mrs[0].repo).toBe('api-next');
+      expect(result[0].mrs[0].repo).toBe('core-api');
     });
 
     it('ignores resolved Redmine tickets if 0 MRs are found on GitLab', async () => {

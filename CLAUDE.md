@@ -8,7 +8,7 @@ Guidance for working in this repository.
 
 - Redmine time tracking (hours, leaderboard, badge)
 - GitLab Ticket Sync (resolved tickets ↔ MRs)
-- Local OTP (TOTP) codes
+- Local OTP (TOTP) codes, with optional fill into a page input the user picked
 
 ## Commands
 
@@ -77,4 +77,5 @@ Ticket Sync uses MR search, discussions, optional single-MR detail, and pipeline
 
 - Pre-commit bumps version and keeps `manifest.json` in sync
 - Pre-push runs lint
+- Public repo policy: never commit company names, internal URLs, private repo names, or real tickets
 - Side panel HMR via Vite/CRXJS; service worker needs manual reload after background changes
