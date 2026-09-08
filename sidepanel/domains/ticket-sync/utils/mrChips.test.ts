@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { getMRStatusFlags, isReadyToTest, MR_STATUS_FLAG_CONFIG } from './mrChips'
-import type { ProcessedMR, ProcessedTicket } from '../types/index'
+import {
+  getMRStatusFlags,
+  isReadyToTest,
+  isResolvedNoMr,
+  getTicketGroup,
+  groupTickets,
+  DISPLAY_GROUPS,
+  MR_STATUS_FLAG_CONFIG,
+} from './mrChips'
+import { TicketGroup, type ProcessedMR, type ProcessedTicket } from '../types/index'
 
 function createMR(overrides: Partial<ProcessedMR> = {}): ProcessedMR {
   return {
@@ -129,3 +137,104 @@ describe('isReadyToTest', () => {
     expect(isReadyToTest(ticket)).toBe(false)
   })
 })
+
+describe('isResolvedNoMr', () => {
+  it('returns true when ticket is resolved and has no MRs', () => {
+    const ticket = createTicket({
+      status: 'Resolved',
+      mrs: [],
+    })
+    expect(isResolvedNoMr(ticket)).toBe(true)
+  })
+
+  it('returns true when ticket is resolved (case-insensitive) and has no MRs', () => {
+    const ticket = createTicket({
+      status: 'resolved',
+      mrs: [],
+    })
+    expect(isResolvedNoMr(ticket)).toBe(true)
+  })
+
+  it('returns false when ticket is resolved but has MRs', () => {
+    const ticket = createTicket({
+      status: 'Resolved',
+      mrs: [createMR({ state: 'merged' })],
+    })
+    expect(isResolvedNoMr(ticket)).toBe(false)
+  })
+
+  it('returns false when ticket is not resolved even if it has no MRs', () => {
+    const ticket = createTicket({
+      status: 'In Progress',
+      mrs: [],
+    })
+    expect(isResolvedNoMr(ticket)).toBe(false)
+  })
+
+  it('returns false when ticket has no id', () => {
+    const ticket = createTicket({
+      id: null,
+      status: 'Resolved',
+      mrs: [],
+    })
+    expect(isResolvedNoMr(ticket)).toBe(false)
+  })
+
+  it('returns false when ticket has no status', () => {
+    const ticket = createTicket({
+      status: undefined,
+      mrs: [],
+    })
+    expect(isResolvedNoMr(ticket)).toBe(false)
+  })
+})
+
+describe('getTicketGroup', () => {
+  it('returns TicketGroup.ReadyToTest when ticket is resolved with all MRs merged', () => {
+    const ticket = createTicket({
+      status: 'Resolved',
+      mrs: [createMR({ state: 'merged' })],
+    })
+    expect(getTicketGroup(ticket)).toBe(TicketGroup.ReadyToTest)
+  })
+
+  it('returns TicketGroup.ResolvedNoMr when ticket is resolved with no MRs', () => {
+    const ticket = createTicket({
+      status: 'Resolved',
+      mrs: [],
+    })
+    expect(getTicketGroup(ticket)).toBe(TicketGroup.ResolvedNoMr)
+  })
+
+  it('returns TicketGroup.Active when ticket is in progress or has open MRs', () => {
+    const ticket = createTicket({
+      status: 'In Progress',
+      mrs: [createMR({ state: 'opened' })],
+    })
+    expect(getTicketGroup(ticket)).toBe(TicketGroup.Active)
+  })
+})
+
+describe('DISPLAY_GROUPS & groupTickets', () => {
+  it('defines the correct ordering of display groups', () => {
+    expect(DISPLAY_GROUPS).toEqual([
+      TicketGroup.ReadyToTest,
+      TicketGroup.ResolvedNoMr,
+      TicketGroup.Active,
+    ])
+  })
+
+  it('correctly partitions a list of tickets into groups', () => {
+    const ready = createTicket({ status: 'Resolved', mrs: [createMR({ state: 'merged' })] })
+    const resolvedNoMr = createTicket({ status: 'Resolved', mrs: [] })
+    const active = createTicket({ status: 'In Progress', mrs: [createMR({ state: 'opened' })] })
+
+    const grouped = groupTickets([ready, resolvedNoMr, active])
+
+    expect(grouped[TicketGroup.ReadyToTest]).toEqual([ready])
+    expect(grouped[TicketGroup.ResolvedNoMr]).toEqual([resolvedNoMr])
+    expect(grouped[TicketGroup.Active]).toEqual([active])
+  })
+})
+
+

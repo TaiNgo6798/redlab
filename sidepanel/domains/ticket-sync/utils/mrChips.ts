@@ -1,4 +1,10 @@
-import type { ProcessedMR, ProcessedTicket, MRStatusFlag } from '../types/index'
+import {
+  TicketGroup,
+  isResolvedStatus,
+  type ProcessedMR,
+  type ProcessedTicket,
+  type MRStatusFlag,
+} from '../types/index'
 
 export interface MRStatusFlagConfig {
   label: string
@@ -71,9 +77,58 @@ export function isReadyToTest(ticket: ProcessedTicket): boolean {
     return false
   }
   return (
-    ticket.status.trim().toLowerCase() === 'resolved' &&
+    isResolvedStatus(ticket.status) &&
     ticket.mrs.every((mr) => mr.state === 'merged')
   )
 }
+
+/**
+ * Check if a ticket is resolved and has no associated MRs.
+ */
+export function isResolvedNoMr(ticket: ProcessedTicket): boolean {
+  if (!ticket.id || !ticket.status) {
+    return false
+  }
+  return (
+    isResolvedStatus(ticket.status) &&
+    ticket.mrs.length === 0
+  )
+}
+
+/**
+ * Classify a ticket into its sync display group.
+ */
+export function getTicketGroup(ticket: ProcessedTicket): TicketGroup {
+  if (isReadyToTest(ticket)) {
+    return TicketGroup.ReadyToTest
+  }
+  if (isResolvedNoMr(ticket)) {
+    return TicketGroup.ResolvedNoMr
+  }
+  return TicketGroup.Active
+}
+
+export const DISPLAY_GROUPS: TicketGroup[] = [
+  TicketGroup.ReadyToTest,
+  TicketGroup.ResolvedNoMr,
+  TicketGroup.Active,
+]
+
+/**
+ * Group tickets by their sync display group.
+ */
+export function groupTickets(tickets: ProcessedTicket[]): Record<TicketGroup, ProcessedTicket[]> {
+  const map: Record<TicketGroup, ProcessedTicket[]> = {
+    [TicketGroup.ReadyToTest]: [],
+    [TicketGroup.ResolvedNoMr]: [],
+    [TicketGroup.Active]: [],
+  }
+  for (const ticket of tickets) {
+    map[getTicketGroup(ticket)].push(ticket)
+  }
+  return map
+}
+
+
 
 

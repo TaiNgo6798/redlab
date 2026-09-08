@@ -154,7 +154,7 @@ describe('ticketSyncEngine', () => {
       expect(result[0].mrs[0].repo).toBe('core-api');
     });
 
-    it('ignores resolved Redmine tickets if 0 MRs are found on GitLab', async () => {
+    it('includes resolved Redmine tickets even if 0 MRs are found on GitLab', async () => {
       getUserMRsMock.mockResolvedValue([]);
       getResolvedTicketsMock.mockResolvedValue([
         {
@@ -168,6 +168,31 @@ describe('ticketSyncEngine', () => {
         id: 99999,
         subject: 'Non-code task',
         status: { id: 3, name: 'Resolved' },
+      });
+
+      const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(99999);
+      expect(result[0].title).toBe('Non-code task');
+      expect(result[0].status).toBe('Resolved');
+      expect(result[0].mrs).toEqual([]);
+    });
+
+    it('ignores tickets with 0 MRs if Redmine issue is no longer Resolved', async () => {
+      getUserMRsMock.mockResolvedValue([]);
+      getResolvedTicketsMock.mockResolvedValue([
+        {
+          id: 99999,
+          title: 'Non-code task',
+          url: 'https://redmine.test/issues/99999',
+        },
+      ]);
+      searchGitlabMRsMock.mockResolvedValue([]);
+      getRedmineIssueMock.mockResolvedValue({
+        id: 99999,
+        subject: 'Non-code task',
+        status: { id: 2, name: 'In Progress' },
       });
 
       const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);

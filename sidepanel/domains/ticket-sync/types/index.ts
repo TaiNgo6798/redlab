@@ -29,3 +29,19 @@ export interface ProcessedTicket {
   mrs: ProcessedMR[]
 }
 
+export enum TicketGroup {
+  ReadyToTest = 'ready_to_test',
+  ResolvedNoMr = 'resolved_no_mr',
+  Active = 'active',
+}
+
+export enum RedmineTicketStatus {
+  Resolved = 'resolved',
+}
+
+export function isResolvedStatus(status?: string | null): boolean {
+  return status?.trim().toLowerCase() === RedmineTicketStatus.Resolved
+}
+
+
+

@@ -9,7 +9,11 @@ import {
   getResolvedTickets,
   type GitlabMR,
 } from './api';
-import type { ProcessedTicket, ProcessedMR } from '../sidepanel/domains/ticket-sync/types/index';
+import {
+  isResolvedStatus,
+  type ProcessedTicket,
+  type ProcessedMR,
+} from '../sidepanel/domains/ticket-sync/types/index';
 
 /** Extract ticket ID from MR title (e.g. [#123], #123). */
 export function extractTicketId(title: string): number | null {
@@ -100,7 +104,9 @@ export async function fetchAndProcessTickets(
     }
   }
 
+  const resolvedTicketMap = new Map<number, (typeof resolvedTickets)[number]>();
   for (const resolved of resolvedTickets) {
+    resolvedTicketMap.set(resolved.id, resolved);
     if (!ticketIdMap.has(resolved.id)) {
       ticketIdMap.set(resolved.id, []);
     }
@@ -145,6 +151,19 @@ export async function fetchAndProcessTickets(
 
         const allMRs = Array.from(mrMap.values());
         if (allMRs.length === 0) {
+          const resolvedInfo = resolvedTicketMap.get(ticketId);
+          const isResolved = redmineIssue
+            ? isResolvedStatus(redmineIssue.status?.name)
+            : Boolean(resolvedInfo);
+          if (isResolved) {
+            results.push({
+              id: ticketId,
+              title: redmineIssue?.subject || resolvedInfo?.title || `Ticket #${ticketId}`,
+              status: redmineIssue?.status?.name || 'Resolved',
+              url: `${redmineUrl.replace(/\/$/, '')}/issues/${ticketId}`,
+              mrs: [],
+            });
+          }
           return;
         }
 

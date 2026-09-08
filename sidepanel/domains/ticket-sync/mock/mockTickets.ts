@@ -44,7 +44,16 @@ export const MOCK_TICKETS: ProcessedTicket[] = [
     ],
   },
 
-  // 2. Multi-Status MR: Single MR with all 3 problem flags (has review + test failed + conflict)
+  // 2. Resolved (No MR) Group: Ticket is Resolved, but no matching MR found
+  {
+    id: 15810,
+    title: 'Update staging environment SSL certificates and DNS records',
+    url: 'https://redmine.example.com/issues/15810',
+    status: 'Resolved',
+    mrs: [],
+  },
+
+  // 3. Multi-Status MR: Single MR with all 3 problem flags (has review + test failed + conflict)
   {
     id: 15935,
     title: 'Refactor session token refresh middleware and auth gateway',

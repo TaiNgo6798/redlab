@@ -14,15 +14,65 @@ import {
   ArrowRightOutlined,
 } from '@ant-design/icons'
 import { PanelCard } from '../../../shared/components/PanelCard'
-import type { ProcessedTicket, MRStatusFlag } from '../types/index'
+import { TicketGroup, type ProcessedTicket, type MRStatusFlag } from '../types/index'
 import type { ShowState } from '../../../shared/types/index'
 import {
   MR_STATUS_FLAG_CONFIG,
   getMRStatusFlags,
-  isReadyToTest,
+  getTicketGroup,
+  groupTickets,
+  DISPLAY_GROUPS,
 } from '../utils/mrChips'
 
 const { Text } = Typography
+
+export const TICKET_CARD_BORDER: Record<TicketGroup, string> = {
+  [TicketGroup.ReadyToTest]: 'border-emerald-500/30',
+  [TicketGroup.ResolvedNoMr]: 'border-amber-500/30',
+  [TicketGroup.Active]: '',
+}
+
+interface TicketGroupSublabel {
+  text: string
+  className: string
+}
+
+interface TicketGroupConfig {
+  title: string
+  sublabel?: TicketGroupSublabel
+  icon: React.ReactNode
+  titleClassName: string
+  badgeClassName: string
+}
+
+export const TICKET_GROUP_CONFIG: Record<TicketGroup, TicketGroupConfig> = {
+  [TicketGroup.ReadyToTest]: {
+    title: 'Ready to Test',
+    sublabel: {
+      text: 'Mark to Testable',
+      className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+    },
+    icon: <CheckCircleOutlined className="text-emerald-400 text-sm" />,
+    titleClassName: 'text-xs font-bold text-emerald-300 uppercase tracking-wider',
+    badgeClassName: 'm-0 border border-emerald-500/30 bg-emerald-500/15 text-xs text-emerald-300 font-semibold rounded-full px-2',
+  },
+  [TicketGroup.ResolvedNoMr]: {
+    title: 'Resolved (No MR)',
+    sublabel: {
+      text: 'Missing MR',
+      className: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+    },
+    icon: <WarningOutlined className="text-amber-400 text-sm" />,
+    titleClassName: 'text-xs font-bold text-amber-300 uppercase tracking-wider',
+    badgeClassName: 'm-0 border border-amber-500/30 bg-amber-500/15 text-xs text-amber-300 font-semibold rounded-full px-2',
+  },
+  [TicketGroup.Active]: {
+    title: 'Active Tickets & MRs',
+    icon: <BranchesOutlined className="text-accent-light text-sm" />,
+    titleClassName: 'text-xs font-bold text-text-secondary uppercase tracking-wider',
+    badgeClassName: 'm-0 border border-white/10 bg-white/5 text-xs text-text-secondary rounded-full px-2',
+  },
+}
 
 function getTicketStatusInfo(status?: string): { className: string; dotClass: string } {
   if (!status) {
@@ -82,18 +132,21 @@ function renderStatusFlagIcon(flag: MRStatusFlag) {
 
 export interface TicketPairCardProps {
   ticket: ProcessedTicket
-  isReadyToTest?: boolean
+  group?: TicketGroup
 }
 
-export function TicketPairCard({ ticket, isReadyToTest = false }: TicketPairCardProps) {
+export function TicketPairCard({
+  ticket,
+  group: explicitGroup,
+}: TicketPairCardProps) {
+  const group = explicitGroup ?? getTicketGroup(ticket)
   const isNoTicket = !ticket.id || ticket.title === 'No ticket'
   const statusInfo = getTicketStatusInfo(ticket.status)
+  const borderClass = TICKET_CARD_BORDER[group]
 
   return (
     <PanelCard
-      className={`p-3.5 flex flex-col gap-3 transition-all duration-200 hover:border-accent-light/40 ${
-        isReadyToTest ? 'border-emerald-500/30' : ''
-      }`}
+      className={`p-3.5 flex flex-col gap-3 transition-all duration-200 hover:border-accent-light/40 ${borderClass}`}
     >
       {/* Line 1: Ticket status + Ticket title */}
       <div className="flex items-center gap-2 min-w-0">
@@ -141,54 +194,74 @@ export function TicketPairCard({ ticket, isReadyToTest = false }: TicketPairCard
         )}
       </div>
 
-      {/* Line 2: List of MRs as pills/cards */}
-      <div className="flex flex-col gap-1.5">
-        {ticket.mrs.map((mr) => {
-          const flags = getMRStatusFlags(mr)
-          return (
+      {/* Line 2: List of MRs as pills/cards, or empty notice if resolved with no MR */}
+      {group === TicketGroup.ResolvedNoMr ? (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs">
+          <div className="flex items-center gap-1.5 min-w-0 truncate">
+            <WarningOutlined className="text-amber-400 shrink-0 text-xs" />
+            <span className="font-medium truncate">Resolved with no matching GitLab MR</span>
+          </div>
+          {ticket.url && (
             <a
-              key={`${mr.repo}-${mr.iid}`}
-              href={mr.url}
+              href={ticket.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="no-underline group"
-              title={mr.title ? `${mr.repo}!${mr.iid}: ${mr.title}` : `${mr.repo}!${mr.iid}`}
+              className="shrink-0 font-semibold text-amber-300 hover:text-amber-200 hover:underline inline-flex items-center gap-1 text-[11px]"
             >
-              <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-bg-primary/60 hover:bg-bg-primary/90 border border-white/5 hover:border-accent-light/40 transition-all cursor-pointer">
-                {/* Left: Repo & IID */}
-                <div className="flex items-center gap-2 min-w-0">
-                  <BranchesOutlined className="text-accent-light text-xs shrink-0" />
-                  <span className="text-xs font-semibold text-text-primary group-hover:text-accent-light transition-colors truncate">
-                    {mr.repo}
-                  </span>
-                  <span className="text-[11px] font-mono font-medium text-accent-light bg-accent/15 px-1.5 py-0.2 rounded shrink-0">
-                    !{mr.iid}
-                  </span>
-                </div>
-
-                {/* Right: Status Flags */}
-                <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                  {flags.map((flag) => {
-                    const config = MR_STATUS_FLAG_CONFIG[flag]
-                    return (
-                      <span
-                        key={flag}
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium leading-none ${config.className}`}
-                      >
-                        {renderStatusFlagIcon(flag)}
-                        <span>{config.label}</span>
-                      </span>
-                    )
-                  })}
-                </div>
-              </div>
+              <span>Open Ticket</span>
+              <ArrowRightOutlined className="text-[9px]" />
             </a>
-          )
-        })}
-      </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {ticket.mrs.map((mr) => {
+            const flags = getMRStatusFlags(mr)
+            return (
+              <a
+                key={`${mr.repo}-${mr.iid}`}
+                href={mr.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="no-underline group"
+                title={mr.title ? `${mr.repo}!${mr.iid}: ${mr.title}` : `${mr.repo}!${mr.iid}`}
+              >
+                <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-bg-primary/60 hover:bg-bg-primary/90 border border-white/5 hover:border-accent-light/40 transition-all cursor-pointer">
+                  {/* Left: Repo & IID */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <BranchesOutlined className="text-accent-light text-xs shrink-0" />
+                    <span className="text-xs font-semibold text-text-primary group-hover:text-accent-light transition-colors truncate">
+                      {mr.repo}
+                    </span>
+                    <span className="text-[11px] font-mono font-medium text-accent-light bg-accent/15 px-1.5 py-0.2 rounded shrink-0">
+                      !{mr.iid}
+                    </span>
+                  </div>
+
+                  {/* Right: Status Flags */}
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                    {flags.map((flag) => {
+                      const config = MR_STATUS_FLAG_CONFIG[flag]
+                      return (
+                        <span
+                          key={flag}
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium leading-none ${config.className}`}
+                        >
+                          {renderStatusFlagIcon(flag)}
+                          <span>{config.label}</span>
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+              </a>
+            )
+          })}
+        </div>
+      )}
 
       {/* Notice for Ready to Test cards */}
-      {isReadyToTest && (
+      {group === TicketGroup.ReadyToTest && (
         <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs">
           <div className="flex items-center gap-1.5 min-w-0 truncate">
             <CheckCircleOutlined className="text-emerald-400 shrink-0 text-xs" />
@@ -231,8 +304,11 @@ export function TicketSyncView({
   onConfigure,
 }: TicketSyncViewProps) {
   const totalMRs = tickets.reduce((acc, t) => acc + t.mrs.length, 0)
-  const readyToTestTickets = useMemo(() => tickets.filter(isReadyToTest), [tickets])
-  const activeTickets = useMemo(() => tickets.filter((t) => !isReadyToTest(t)), [tickets])
+  const groupedTickets = useMemo(() => groupTickets(tickets), [tickets])
+
+  const hasSpecialGroup =
+    groupedTickets[TicketGroup.ReadyToTest].length > 0 ||
+    groupedTickets[TicketGroup.ResolvedNoMr].length > 0
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 fade-in">
@@ -330,59 +406,51 @@ export function TicketSyncView({
             </PanelCard>
           ) : (
             <div className="flex flex-col gap-5">
-              {/* Ready to Test Group */}
-              {readyToTestTickets.length > 0 && (
-                <div className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CheckCircleOutlined className="text-emerald-400 text-sm" />
-                      <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
-                        Ready to Test
-                      </span>
-                      <Tag className="m-0 border border-emerald-500/30 bg-emerald-500/15 text-xs text-emerald-300 font-semibold rounded-full px-2">
-                        {readyToTestTickets.length}
-                      </Tag>
-                    </div>
-                    <span className="text-[11px] text-text-secondary">
-                      Mark to Testable
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    {readyToTestTickets.map((ticket, index) => (
-                      <TicketPairCard
-                        key={ticket.id !== null ? `ready-${ticket.id}` : `ready-no-ticket-${ticket.mrs[0]?.url || index}`}
-                        ticket={ticket}
-                        isReadyToTest={true}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+              {DISPLAY_GROUPS.map((group) => {
+                const groupTickets = groupedTickets[group]
+                if (groupTickets.length === 0) return null
 
-              {/* Active Tickets Group */}
-              {activeTickets.length > 0 && (
-                <div className="flex flex-col gap-2.5">
-                  {readyToTestTickets.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <BranchesOutlined className="text-accent-light text-sm" />
-                      <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-                        Active Tickets & MRs
-                      </span>
-                      <Tag className="m-0 border border-white/10 bg-white/5 text-xs text-text-secondary rounded-full px-2">
-                        {activeTickets.length}
-                      </Tag>
+                const showHeader = group !== TicketGroup.Active || hasSpecialGroup
+                const config = TICKET_GROUP_CONFIG[group]
+
+                return (
+                  <div key={group} className="flex flex-col gap-2.5">
+                    {showHeader && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {config.icon}
+                          <span className={config.titleClassName}>
+                            {config.title}
+                          </span>
+                          <Tag className={config.badgeClassName}>
+                            {groupTickets.length}
+                          </Tag>
+                        </div>
+                        {config.sublabel && (
+                          <Tag
+                            className={`m-0 text-[11px] font-medium border rounded-md px-1.5 py-0 leading-none ${config.sublabel.className}`}
+                          >
+                            {config.sublabel.text}
+                          </Tag>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-3">
+                      {groupTickets.map((ticket, index) => (
+                        <TicketPairCard
+                          key={
+                            ticket.id !== null
+                              ? `${group}-${ticket.id}`
+                              : `${group}-no-ticket-${ticket.mrs[0]?.url || index}`
+                          }
+                          ticket={ticket}
+                          group={group}
+                        />
+                      ))}
                     </div>
-                  )}
-                  <div className="flex flex-col gap-3">
-                    {activeTickets.map((ticket, index) => (
-                      <TicketPairCard
-                        key={ticket.id !== null ? `ticket-${ticket.id}` : `no-ticket-${ticket.mrs[0]?.url || index}`}
-                        ticket={ticket}
-                      />
-                    ))}
                   </div>
-                </div>
-              )}
+                )
+              })}
             </div>
           )}
         </>
