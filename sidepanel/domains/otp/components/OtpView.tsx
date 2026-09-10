@@ -1,10 +1,29 @@
 import type { ReactNode } from 'react'
-import { Button, Input, Popconfirm, Progress, Typography, message } from 'antd'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import { Button, Input, Popconfirm, Typography, message } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
 import { PanelCard } from '../../../shared/components/PanelCard'
 import { useOtpManager } from '../hooks/useOtpManager'
 
 const { Text } = Typography
+
+function remainingBarColor(secondsLeft: number): string {
+  if (secondsLeft <= 3) return 'var(--color-danger)'
+  if (secondsLeft <= 7) return 'var(--color-warning)'
+  return 'var(--color-accent-light)'
+}
+
+function formatOtpCode(code: string): string {
+  return code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code
+}
+
+async function copyOtpCode(code: string) {
+  try {
+    await navigator.clipboard.writeText(code)
+    message.success('Copied')
+  } catch {
+    message.error('Failed to copy')
+  }
+}
 
 function OtpPanelCard({ title, icon, action, children }: { title: string; icon: string; action?: ReactNode; children: ReactNode }) {
   return (
@@ -30,7 +49,7 @@ export function OtpView() {
             <Input placeholder="Name (e.g. GitHub)" value={otp.name} onChange={(e) => otp.setName(e.target.value)} />
             <Input placeholder="Secret code" value={otp.secret} onChange={(e) => otp.setSecret(e.target.value)} />
             <div className="flex gap-2">
-              <Button type="primary" icon={<PlusOutlined />} onClick={otp.saveAuthenticator} className="flex-1">{otp.editingId ? 'Save' : 'Add'}</Button>
+              <Button type="primary" onClick={otp.saveAuthenticator} className="flex-1">{otp.editingId ? 'Save' : 'Add'}</Button>
               <Button onClick={() => { otp.setEditingId(null); otp.setName(''); otp.setSecret(''); otp.setStatus(null); otp.setIsFormOpen(false) }}>Cancel</Button>
             </div>
             {otp.status && <Text type={otp.status.type === 'error' ? 'danger' : 'success'} className="text-xs">{otp.status.message}</Text>}
@@ -42,19 +61,62 @@ export function OtpView() {
         <div className="flex flex-col gap-2">
           {otp.codes.length === 0 && <Text type="secondary" className="text-sm">No authenticator yet.</Text>}
           {otp.codes.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-bg-card p-3">
-              <div className="min-w-0 flex-1">
-                <span className="block text-sm font-normal">{item.name}</span>
-                <button type="button" className="inline-block cursor-pointer rounded px-1 py-1 text-left transition hover:text-white/20" onClick={async () => { try { await navigator.clipboard.writeText(item.code); message.success('Copied') } catch { message.error('Failed to copy') } }}>
-                  <span className="block text-[28px] font-bold tracking-[0.3em]">{item.code}</span>
-                </button>
+            <div key={item.id} className="relative overflow-hidden rounded-lg border border-white/10 bg-bg-card p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-1.5">
+                <span className="truncate text-xs font-bold text-text-primary">{item.name}</span>
+                <div className="flex items-center gap-0.5 text-xs text-text-secondary flex-shrink-0 [&_.ant-btn]:h-auto! [&_.ant-btn]:px-1.5! [&_.ant-btn]:py-0.5! [&_.ant-btn]:text-[11px]!">
+                  <Button
+                    type="text"
+                    size="small"
+                    className="text-text-secondary! hover:text-text-primary!"
+                    onClick={() => otp.editAuthenticator(item)}
+                  >
+                    Edit
+                  </Button>
+                  <span className="text-white/20 select-none">|</span>
+                  <Popconfirm
+                    title="Remove authenticator?"
+                    description={`This will remove ${item.name}.`}
+                    okText="Remove"
+                    cancelText="Cancel"
+                    okButtonProps={{ danger: true, className: 'remove-confirm-button' }}
+                    onConfirm={() => otp.removeAuthenticator(item.id)}
+                  >
+                    <Button
+                      type="text"
+                      size="small"
+                      danger
+                      className="text-danger! hover:opacity-80"
+                    >
+                      Del
+                    </Button>
+                  </Popconfirm>
+                </div>
               </div>
-              <div className="flex items-center gap-1 self-center">
-                <Progress type="circle" percent={(timeRemaining / otp.stepSeconds) * 100} size={36} format={() => String(timeRemaining)} strokeWidth={10} strokeColor="#22d3ee" railColor="rgba(255,255,255,0.12)" className="[&_.ant-progress-text]:text-[16px] [&_.ant-progress-text]:font-semibold [&_.ant-progress-text]:text-text-primary" />
-                <Button type="text" size="small" icon={<EditOutlined />} onClick={() => otp.editAuthenticator(item)} />
-                <Popconfirm title="Remove authenticator?" description={`This will remove ${item.name}.`} okText="Remove" cancelText="Cancel" okButtonProps={{ danger: true, className: 'remove-confirm-button' }} onConfirm={() => otp.removeAuthenticator(item.id)}>
-                  <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-                </Popconfirm>
+
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  className="group inline-flex items-center gap-1.5 cursor-pointer rounded text-left transition hover:text-accent-light focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-light"
+                  onClick={() => copyOtpCode(item.code)}
+                >
+                  <span className="font-mono text-2xl font-bold tracking-wider tabular-nums text-text-primary group-hover:text-accent-light transition">
+                    {formatOtpCode(item.code)}
+                  </span>
+                </button>
+                <span className="text-xs font-bold text-text-secondary tabular-nums flex-shrink-0">
+                  {timeRemaining}s
+                </span>
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                <div
+                  className="h-full transition-all duration-1000 ease-linear"
+                  style={{
+                    width: `${(timeRemaining / otp.stepSeconds) * 100}%`,
+                    backgroundColor: remainingBarColor(timeRemaining),
+                  }}
+                />
               </div>
             </div>
           ))}

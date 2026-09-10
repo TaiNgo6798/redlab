@@ -2,6 +2,7 @@ import '../styles/global.css'
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ConfigProvider } from 'antd'
+import { GithubOutlined } from '@ant-design/icons'
 import { antdTheme } from '../styles/antd-theme'
 import type { ViewName } from './shared/types/index'
 import { AppHeader } from './shared/components/AppHeader'
@@ -115,6 +116,18 @@ function App() {
           onConfigure={() => handleSetView('settings')}
         />
       )}
+
+      <footer className="mt-auto pt-3 text-center">
+        <a
+          href="https://github.com/TaiNgo6798/redlab"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded px-1 py-1 text-xs text-text-secondary no-underline transition-colors hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-light"
+        >
+          <GithubOutlined aria-hidden="true" />
+          Open source on GitHub
+        </a>
+      </footer>
 
       <MockTicketsModal
         open={isMockModalOpen}
