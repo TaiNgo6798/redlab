@@ -4,7 +4,7 @@
 
 Chrome side panel for teams that use **Redmine** and **GitLab**.
 
-Track logged hours, see the team leaderboard, and match resolved Redmine tickets to GitLab merge requests — plus local OTP codes you can fill into the page.
+Track logged hours, see the team leaderboard, and match resolved Redmine tickets to GitLab merge requests — plus local OTP codes.
 
 <p align="center">
   <a href="https://chromewebstore.google.com/detail/redlab/pimegpjllpdeeflnmfgkkoleobfncbjb">
@@ -37,7 +37,7 @@ You log time in **Redmine** and merge code in **GitLab**. RedLab is a Chrome ext
 - **Time tracking and leaderboard** — Logged vs expected vs remaining hours, progress bar, period filters (today / week / month / history ranges)
 - **Chrome badge** — Hours on the extension icon (logged or remaining, per settings)
 - **Ticket Sync** — Resolved Redmine tickets matched to GitLab merge requests; groups for ready / conflicts / failed CI / open review / open to merge / draft
-- **OTP** — Local TOTP codes. Set a page input as the target, then Fill writes the current code (copy-on-click still works)
+- **OTP** — Local TOTP authenticators in the side panel
 - **Settings** — Redmine URL + API key, GitLab URL + token, hours-per-day, badge/ranking display, settings import/export
 - **Local-only credentials** — Keys stay in Chrome storage; calls go only to your configured hosts
 

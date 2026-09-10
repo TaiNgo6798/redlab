@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useOtpFill } from './useOtpFill'
 
 export type OtpStatusType = 'error' | 'success'
 
@@ -8,7 +7,6 @@ export interface OtpCode {
   name: string
   secret: string
   code: string
-  fillOrigin?: string
 }
 
 export function useOtpManager() {
@@ -87,8 +85,6 @@ export function useOtpManager() {
     await loadOtpCodes()
   }, [editingId, loadOtpCodes])
 
-  const fill = useOtpFill(loadOtpCodes)
-
   return {
     name,
     secret,
@@ -98,7 +94,6 @@ export function useOtpManager() {
     currentTick,
     editingId,
     isFormOpen,
-    pickingId: fill.pickingId,
     setName,
     setSecret,
     setStatus,
@@ -107,8 +102,5 @@ export function useOtpManager() {
     saveAuthenticator,
     editAuthenticator,
     removeAuthenticator,
-    pickTarget: fill.pickTarget,
-    cancelPick: fill.cancelPick,
-    fillCode: fill.fillCode,
   }
 }
