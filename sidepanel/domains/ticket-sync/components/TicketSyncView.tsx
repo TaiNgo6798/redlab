@@ -12,6 +12,7 @@ import {
   EditOutlined,
   CheckCircleOutlined,
   ArrowRightOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons'
 import { PanelCard } from '../../../shared/components/PanelCard'
 import { TicketGroup, type ProcessedTicket, type MRStatusFlag } from '../types/index'
@@ -21,15 +22,15 @@ import {
   getMRStatusFlags,
   getTicketGroup,
   groupTickets,
+  isNoCodeTicket,
   DISPLAY_GROUPS,
 } from '../utils/mrChips'
+import { ResolvedSubtaskList } from './ResolvedSubtaskList'
 
 const { Text } = Typography
 
-export const TICKET_CARD_BORDER: Record<TicketGroup, string> = {
+export const TICKET_CARD_BORDER: Partial<Record<TicketGroup, string>> = {
   [TicketGroup.ReadyToTest]: 'border-emerald-500/30',
-  [TicketGroup.ResolvedNoMr]: 'border-amber-500/30',
-  [TicketGroup.Active]: '',
 }
 
 interface TicketGroupSublabel {
@@ -56,15 +57,11 @@ export const TICKET_GROUP_CONFIG: Record<TicketGroup, TicketGroupConfig> = {
     titleClassName: 'text-xs font-bold text-emerald-300 uppercase tracking-wider',
     badgeClassName: 'm-0 border border-emerald-500/30 bg-emerald-500/15 text-xs text-emerald-300 font-semibold rounded-full px-2',
   },
-  [TicketGroup.ResolvedNoMr]: {
-    title: 'Resolved (No MR)',
-    sublabel: {
-      text: 'Missing MR',
-      className: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-    },
-    icon: <WarningOutlined className="text-amber-400 text-sm" />,
-    titleClassName: 'text-xs font-bold text-amber-300 uppercase tracking-wider',
-    badgeClassName: 'm-0 border border-amber-500/30 bg-amber-500/15 text-xs text-amber-300 font-semibold rounded-full px-2',
+  [TicketGroup.ResolvedSubtask]: {
+    title: 'Resolved Sub-tasks',
+    icon: <ApartmentOutlined className="text-slate-400 text-sm" />,
+    titleClassName: 'text-xs font-bold text-slate-300 uppercase tracking-wider',
+    badgeClassName: 'm-0 border border-slate-500/30 bg-slate-500/15 text-xs text-slate-300 font-semibold rounded-full px-2',
   },
   [TicketGroup.Active]: {
     title: 'Active Tickets & MRs',
@@ -142,7 +139,7 @@ export function TicketPairCard({
   const group = explicitGroup ?? getTicketGroup(ticket)
   const isNoTicket = !ticket.id || ticket.title === 'No ticket'
   const statusInfo = getTicketStatusInfo(ticket.status)
-  const borderClass = TICKET_CARD_BORDER[group]
+  const borderClass = TICKET_CARD_BORDER[group] ?? ''
 
   return (
     <PanelCard
@@ -194,25 +191,10 @@ export function TicketPairCard({
         )}
       </div>
 
-      {/* Line 2: List of MRs as pills/cards, or empty notice if resolved with no MR */}
-      {group === TicketGroup.ResolvedNoMr ? (
-        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs">
-          <div className="flex items-center gap-1.5 min-w-0 truncate">
-            <WarningOutlined className="text-amber-400 shrink-0 text-xs" />
-            <span className="font-medium truncate">Resolved with no matching GitLab MR</span>
-          </div>
-          {ticket.url && (
-            <a
-              href={ticket.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 font-semibold text-amber-300 hover:text-amber-200 hover:underline inline-flex items-center gap-1 text-[11px]"
-            >
-              <span>Open Ticket</span>
-              <ArrowRightOutlined className="text-[9px]" />
-            </a>
-          )}
-        </div>
+      {isNoCodeTicket(ticket) ? (
+        <span className="self-start inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium leading-none bg-slate-500/20 text-slate-300 border border-slate-500/30">
+          no code
+        </span>
       ) : (
         <div className="flex flex-col gap-1.5">
           {ticket.mrs.map((mr) => {
@@ -284,6 +266,29 @@ export function TicketPairCard({
   )
 }
 
+interface TicketGroupItemsProps {
+  group: TicketGroup
+  tickets: ProcessedTicket[]
+}
+
+export function TicketGroupItems({ group, tickets }: TicketGroupItemsProps) {
+  if (group === TicketGroup.ResolvedSubtask) {
+    return <ResolvedSubtaskList tickets={tickets} />
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {tickets.map((ticket, index) => (
+        <TicketPairCard
+          key={ticket.id !== null ? ticket.id : `no-ticket-${ticket.mrs[0]?.url || index}`}
+          ticket={ticket}
+          group={group}
+        />
+      ))}
+    </div>
+  )
+}
+
 interface TicketSyncViewProps {
   tickets: ProcessedTicket[]
   showState: ShowState
@@ -308,7 +313,7 @@ export function TicketSyncView({
 
   const hasSpecialGroup =
     groupedTickets[TicketGroup.ReadyToTest].length > 0 ||
-    groupedTickets[TicketGroup.ResolvedNoMr].length > 0
+    groupedTickets[TicketGroup.ResolvedSubtask].length > 0
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 fade-in">
@@ -435,19 +440,7 @@ export function TicketSyncView({
                         )}
                       </div>
                     )}
-                    <div className="flex flex-col gap-3">
-                      {groupTickets.map((ticket, index) => (
-                        <TicketPairCard
-                          key={
-                            ticket.id !== null
-                              ? `${group}-${ticket.id}`
-                              : `${group}-no-ticket-${ticket.mrs[0]?.url || index}`
-                          }
-                          ticket={ticket}
-                          group={group}
-                        />
-                      ))}
-                    </div>
+                    <TicketGroupItems group={group} tickets={groupTickets} />
                   </div>
                 )
               })}

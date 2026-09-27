@@ -6,10 +6,14 @@ import {
   getMRLatestPipelineStatus,
   checkMRDiscussions,
   getRedmineIssue,
+  getRedmineIssues,
   getResolvedTickets,
+  redmineIssueUrl,
   type GitlabMR,
+  type RedmineIssue,
 } from './api';
 import {
+  isFinishedStatus,
   isResolvedStatus,
   type ProcessedTicket,
   type ProcessedMR,
@@ -73,6 +77,30 @@ export async function processMR(
     is_draft: Boolean(source.draft) || mr.title.toLowerCase().startsWith('draft:'),
     has_failed_pipeline: hasFailedPipeline,
   };
+}
+
+// Older Redmine versions omit is_closed, so fall back to the status name.
+function isClosedIssue(issue: RedmineIssue): boolean {
+  return issue.status?.is_closed ?? isFinishedStatus(issue.status?.name);
+}
+
+async function attachOpenParents(
+  redmineUrl: string,
+  redmineApiKey: string,
+  tickets: ProcessedTicket[],
+): Promise<ProcessedTicket[]> {
+  const parentIds = Array.from(new Set(tickets.flatMap((t) => (t.parent ? [t.parent.id] : []))));
+  if (parentIds.length === 0) return tickets;
+
+  const parents = await getRedmineIssues(redmineUrl, redmineApiKey, parentIds).catch(() => []);
+  const parentById = new Map(parents.map((p) => [p.id, p]));
+
+  return tickets.flatMap((ticket) => {
+    const parent = ticket.parent && parentById.get(ticket.parent.id);
+    if (!ticket.parent || !parent) return [ticket];
+    if (isClosedIssue(parent)) return [];
+    return [{ ...ticket, parent: { ...ticket.parent, title: parent.subject, status: parent.status?.name } }];
+  });
 }
 
 export async function fetchAndProcessTickets(
@@ -156,12 +184,14 @@ export async function fetchAndProcessTickets(
             ? isResolvedStatus(redmineIssue.status?.name)
             : Boolean(resolvedInfo);
           if (isResolved) {
+            const parentId = redmineIssue ? redmineIssue.parent?.id : resolvedInfo?.parentId;
             results.push({
               id: ticketId,
               title: redmineIssue?.subject || resolvedInfo?.title || `Ticket #${ticketId}`,
               status: redmineIssue?.status?.name || 'Resolved',
-              url: `${redmineUrl.replace(/\/$/, '')}/issues/${ticketId}`,
+              url: redmineIssueUrl(redmineUrl, ticketId),
               mrs: [],
+              parent: parentId ? { id: parentId, url: redmineIssueUrl(redmineUrl, parentId) } : undefined,
             });
           }
           return;
@@ -176,7 +206,7 @@ export async function fetchAndProcessTickets(
             id: ticketId,
             title: redmineIssue.subject,
             status: redmineIssue.status?.name,
-            url: `${redmineUrl.replace(/\/$/, '')}/issues/${ticketId}`,
+            url: redmineIssueUrl(redmineUrl, ticketId),
             mrs: processedMRs,
           });
         } else {
@@ -212,9 +242,11 @@ export async function fetchAndProcessTickets(
     }),
   );
 
+  const withParents = await attachOpenParents(redmineUrl, redmineApiKey, results);
+
   onProgress?.(100);
 
-  return results.sort((a, b) => {
+  return withParents.sort((a, b) => {
     if (a.id !== null && b.id !== null) return b.id - a.id;
     if (a.id !== null) return -1;
     if (b.id !== null) return 1;

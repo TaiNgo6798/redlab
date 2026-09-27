@@ -1,15 +1,15 @@
 import { useMemo } from 'react'
 import { Modal, Tag, Button } from 'antd'
 import {
+  ApartmentOutlined,
   CheckCircleOutlined,
   BranchesOutlined,
   CloseOutlined,
-  WarningOutlined,
 } from '@ant-design/icons'
 import { MOCK_TICKETS } from '../mock/mockTickets'
 import { TicketGroup } from '../types/index'
 import { DISPLAY_GROUPS, groupTickets } from '../utils/mrChips'
-import { TicketPairCard } from './TicketSyncView'
+import { TicketGroupItems } from './TicketSyncView'
 
 interface MockTicketsModalProps {
   open: boolean
@@ -40,15 +40,11 @@ const MODAL_GROUP_CONFIG: Record<TicketGroup, ModalGroupConfig> = {
     titleClassName: 'text-[11px] font-bold text-emerald-300 uppercase tracking-wider',
     badgeClassName: 'm-0 border border-emerald-500/30 bg-emerald-500/15 text-[10px] text-emerald-300 font-semibold rounded-full px-1.5 py-0 leading-none',
   },
-  [TicketGroup.ResolvedNoMr]: {
-    title: 'Resolved (No MR)',
-    sublabel: {
-      text: 'Missing MR',
-      className: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-    },
-    icon: <WarningOutlined className="text-amber-400 text-xs" />,
-    titleClassName: 'text-[11px] font-bold text-amber-300 uppercase tracking-wider',
-    badgeClassName: 'm-0 border border-amber-500/30 bg-amber-500/15 text-[10px] text-amber-300 font-semibold rounded-full px-1.5 py-0 leading-none',
+  [TicketGroup.ResolvedSubtask]: {
+    title: 'Resolved Sub-tasks',
+    icon: <ApartmentOutlined className="text-slate-400 text-xs" />,
+    titleClassName: 'text-[11px] font-bold text-slate-300 uppercase tracking-wider',
+    badgeClassName: 'm-0 border border-slate-500/30 bg-slate-500/15 text-[10px] text-slate-300 font-semibold rounded-full px-1.5 py-0 leading-none',
   },
   [TicketGroup.Active]: {
     title: 'Active Tickets & MRs',
@@ -148,15 +144,7 @@ export function MockTicketsModal({ open, onClose }: MockTicketsModalProps) {
                     </Tag>
                   )}
                 </div>
-                <div className="flex flex-col gap-2.5">
-                  {groupTickets.map((ticket, index) => (
-                    <TicketPairCard
-                      key={`modal-${group}-${ticket.id !== null ? ticket.id : index}`}
-                      ticket={ticket}
-                      group={group}
-                    />
-                  ))}
-                </div>
+                <TicketGroupItems group={group} tickets={groupTickets} />
               </div>
             )
           })}

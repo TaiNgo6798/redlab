@@ -1,4 +1,5 @@
 import {
+  MRState,
   TicketGroup,
   isResolvedStatus,
   type ProcessedMR,
@@ -62,7 +63,7 @@ export function getMRStatusFlags(mr: ProcessedMR): MRStatusFlag[] {
     return flags
   }
 
-  if (mr.state === 'merged') {
+  if (mr.state === MRState.Merged) {
     return ['merged']
   }
 
@@ -70,48 +71,34 @@ export function getMRStatusFlags(mr: ProcessedMR): MRStatusFlag[] {
 }
 
 /**
- * Check if a ticket is resolved and all of its associated MRs are merged.
- */
-export function isReadyToTest(ticket: ProcessedTicket): boolean {
-  if (!ticket.id || !ticket.status || ticket.mrs.length === 0) {
-    return false
-  }
-  return (
-    isResolvedStatus(ticket.status) &&
-    ticket.mrs.every((mr) => mr.state === 'merged')
-  )
-}
-
-/**
- * Check if a ticket is resolved and has no associated MRs.
- */
-export function isResolvedNoMr(ticket: ProcessedTicket): boolean {
-  if (!ticket.id || !ticket.status) {
-    return false
-  }
-  return (
-    isResolvedStatus(ticket.status) &&
-    ticket.mrs.length === 0
-  )
-}
-
-/**
  * Classify a ticket into its sync display group.
  */
 export function getTicketGroup(ticket: ProcessedTicket): TicketGroup {
-  if (isReadyToTest(ticket)) {
-    return TicketGroup.ReadyToTest
+  if (!ticket.id || !isResolvedStatus(ticket.status)) {
+    return TicketGroup.Active
   }
-  if (isResolvedNoMr(ticket)) {
-    return TicketGroup.ResolvedNoMr
+  if (ticket.mrs.length === 0) {
+    return ticket.parent ? TicketGroup.ResolvedSubtask : TicketGroup.ReadyToTest
   }
-  return TicketGroup.Active
+  return ticket.mrs.every((mr) => mr.state === MRState.Merged) ? TicketGroup.ReadyToTest : TicketGroup.Active
+}
+
+export function isReadyToTest(ticket: ProcessedTicket): boolean {
+  return getTicketGroup(ticket) === TicketGroup.ReadyToTest
+}
+
+export function isResolvedSubtask(ticket: ProcessedTicket): boolean {
+  return getTicketGroup(ticket) === TicketGroup.ResolvedSubtask
+}
+
+export function isNoCodeTicket(ticket: ProcessedTicket): boolean {
+  return ticket.mrs.length === 0 && isReadyToTest(ticket)
 }
 
 export const DISPLAY_GROUPS: TicketGroup[] = [
   TicketGroup.ReadyToTest,
-  TicketGroup.ResolvedNoMr,
   TicketGroup.Active,
+  TicketGroup.ResolvedSubtask,
 ]
 
 /**
@@ -120,7 +107,7 @@ export const DISPLAY_GROUPS: TicketGroup[] = [
 export function groupTickets(tickets: ProcessedTicket[]): Record<TicketGroup, ProcessedTicket[]> {
   const map: Record<TicketGroup, ProcessedTicket[]> = {
     [TicketGroup.ReadyToTest]: [],
-    [TicketGroup.ResolvedNoMr]: [],
+    [TicketGroup.ResolvedSubtask]: [],
     [TicketGroup.Active]: [],
   }
   for (const ticket of tickets) {
@@ -128,7 +115,3 @@ export function groupTickets(tickets: ProcessedTicket[]): Record<TicketGroup, Pr
   }
   return map
 }
-
-
-
-

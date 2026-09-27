@@ -4,9 +4,12 @@ import * as api from './api';
 
 vi.mock('./api');
 
+const { redmineIssueUrl } = await vi.importActual<typeof api>('./api');
+
 describe('ticketSyncEngine', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(api.redmineIssueUrl).mockImplementation(redmineIssueUrl);
   });
 
   describe('extractTicketId', () => {
@@ -100,6 +103,7 @@ describe('ticketSyncEngine', () => {
     const checkMRDiscussionsMock = vi.mocked(api.checkMRDiscussions);
     const getRedmineIssueMock = vi.mocked(api.getRedmineIssue);
     const getResolvedTicketsMock = vi.mocked(api.getResolvedTickets);
+    const getRedmineIssuesMock = vi.mocked(api.getRedmineIssues);
 
     beforeEach(() => {
       getGitlabUserMock.mockResolvedValue({ id: 1, username: 'testuser', name: 'Test User' });
@@ -110,6 +114,7 @@ describe('ticketSyncEngine', () => {
       checkMRDiscussionsMock.mockResolvedValue(false);
       getRedmineIssueMock.mockResolvedValue(null);
       getResolvedTicketsMock.mockResolvedValue([]);
+      getRedmineIssuesMock.mockResolvedValue([]);
     });
 
     it('returns empty list if user has no MRs and no resolved tickets', async () => {
@@ -177,6 +182,100 @@ describe('ticketSyncEngine', () => {
       expect(result[0].title).toBe('Non-code task');
       expect(result[0].status).toBe('Resolved');
       expect(result[0].mrs).toEqual([]);
+    });
+
+    describe('resolved sub-tasks with no MR', () => {
+      beforeEach(() => {
+        getResolvedTicketsMock.mockResolvedValue([
+          { id: 501, title: 'Sub-task', url: 'https://redmine.test/issues/501', parentId: 500 },
+        ]);
+        getRedmineIssueMock.mockResolvedValue({
+          id: 501,
+          subject: 'Sub-task',
+          status: { id: 3, name: 'Resolved' },
+          parent: { id: 500 },
+        });
+      });
+
+      it('attaches the parent with its title from one batched lookup', async () => {
+        getRedmineIssuesMock.mockResolvedValue([
+          { id: 500, subject: 'Parent feature', status: { id: 2, name: 'In Progress' } },
+        ]);
+
+        const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+
+        expect(getRedmineIssuesMock).toHaveBeenCalledWith(mockRedmineUrl, mockApiKey, [500]);
+        expect(result).toHaveLength(1);
+        expect(result[0].parent).toEqual({
+          id: 500,
+          url: 'https://redmine.test/issues/500',
+          title: 'Parent feature',
+          status: 'In Progress',
+        });
+      });
+
+      it('drops the sub-task when its parent is closed or rejected', async () => {
+        getRedmineIssuesMock.mockResolvedValue([
+          { id: 500, subject: 'Parent feature', status: { id: 5, name: 'Closed' } },
+        ]);
+
+        const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+
+        expect(result).toEqual([]);
+      });
+
+      it('drops the sub-task when Redmine flags a custom-named parent status as closed', async () => {
+        getRedmineIssuesMock.mockResolvedValue([
+          { id: 500, subject: 'Parent feature', status: { id: 7, name: 'Done', is_closed: true } },
+        ]);
+
+        const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+
+        expect(result).toEqual([]);
+      });
+
+      it('keeps the sub-task when Redmine flags the parent status as open', async () => {
+        getRedmineIssuesMock.mockResolvedValue([
+          { id: 500, subject: 'Parent feature', status: { id: 3, name: 'Resolved', is_closed: false } },
+        ]);
+
+        const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+
+        expect(result).toHaveLength(1);
+      });
+
+      it('keeps the parent id only when the parent lookup fails', async () => {
+        getRedmineIssuesMock.mockRejectedValue(new Error('403'));
+
+        const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+
+        expect(result).toHaveLength(1);
+        expect(result[0].parent).toEqual({ id: 500, url: 'https://redmine.test/issues/500' });
+      });
+
+      it('falls back to the parent id from the resolved list when the issue fetch fails', async () => {
+        getRedmineIssueMock.mockResolvedValue(null);
+
+        const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+
+        expect(result[0].parent?.id).toBe(500);
+      });
+    });
+
+    it('skips the parent lookup when no ticket has a parent', async () => {
+      getResolvedTicketsMock.mockResolvedValue([
+        { id: 99999, title: 'Non-code task', url: 'https://redmine.test/issues/99999' },
+      ]);
+      getRedmineIssueMock.mockResolvedValue({
+        id: 99999,
+        subject: 'Non-code task',
+        status: { id: 3, name: 'Resolved' },
+      });
+
+      const result = await fetchAndProcessTickets(mockRedmineUrl, mockApiKey, mockGitlabUrl, mockGitlabToken);
+
+      expect(result[0].parent).toBeUndefined();
+      expect(getRedmineIssuesMock).not.toHaveBeenCalled();
     });
 
     it('ignores tickets with 0 MRs if Redmine issue is no longer Resolved', async () => {

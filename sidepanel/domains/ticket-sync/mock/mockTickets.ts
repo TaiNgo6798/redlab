@@ -44,13 +44,39 @@ export const MOCK_TICKETS: ProcessedTicket[] = [
     ],
   },
 
-  // 2. Resolved (No MR) Group: Ticket is Resolved, but no matching MR found
+  // 2. Ready to Test (no code): Root ticket is Resolved and needs no MR
   {
     id: 15810,
     title: 'Update staging environment SSL certificates and DNS records',
     url: 'https://redmine.example.com/issues/15810',
     status: 'Resolved',
     mrs: [],
+  },
+
+  // 2b. Resolved Sub-tasks: code lives in another MR under the same parent
+  {
+    id: 15806,
+    title: 'Invoice form: section layout & validation',
+    url: 'https://redmine.example.com/issues/15806',
+    status: 'Resolved',
+    mrs: [],
+    parent: { id: 15800, url: 'https://redmine.example.com/issues/15800', title: 'Invoice editor rollout', status: 'In Progress' },
+  },
+  {
+    id: 15805,
+    title: 'Invoice form: types & mapping',
+    url: 'https://redmine.example.com/issues/15805',
+    status: 'Resolved',
+    mrs: [],
+    parent: { id: 15800, url: 'https://redmine.example.com/issues/15800', title: 'Invoice editor rollout', status: 'In Progress' },
+  },
+  {
+    id: 15795,
+    title: 'Benchmark export pipeline',
+    url: 'https://redmine.example.com/issues/15795',
+    status: 'Resolved',
+    mrs: [],
+    parent: { id: 15790, url: 'https://redmine.example.com/issues/15790' },
   },
 
   // 3. Multi-Status MR: Single MR with all 3 problem flags (has review + test failed + conflict)

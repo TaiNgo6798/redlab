@@ -17,6 +17,7 @@ import {
   getOtherUserMRs,
   getUserMRs,
   getRedmineIssue,
+  getRedmineIssues,
   buildRanking,
   type TimeScope,
   type UserHours,
@@ -135,6 +136,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       getOtherUserMRs,
       getUserMRs,
       getRedmineIssue,
+      getRedmineIssues,
     };
 
     if (apiFunctions[action]) {

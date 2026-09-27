@@ -62,17 +62,24 @@ export interface ResolvedTicket {
   id: number
   title: string
   url: string
+  parentId?: number
 }
 
 interface RedmineIssueStatus {
   id: number
   name: string
+  is_closed?: boolean
+}
+
+interface RedmineIssueRef {
+  id: number
 }
 
 interface RedmineResolvedIssue {
   id: number
   subject: string
   status: RedmineIssueStatus
+  parent?: RedmineIssueRef
 }
 
 interface GitlabDiscussionNote {
@@ -341,7 +348,8 @@ export async function getResolvedTickets(
   return resolved.map((i) => ({
     id: i.id,
     title: i.subject,
-    url: `${redmineUrl}/issues/${i.id}`,
+    url: redmineIssueUrl(redmineUrl, i.id),
+    parentId: i.parent?.id,
   }))
 }
 
@@ -498,13 +506,15 @@ export async function checkMRDiscussions(
   return hasOpenReview(discussions, currentUserId, approved)
 }
 
+export function redmineIssueUrl(redmineUrl: string, issueId: number): string {
+  return `${redmineUrl.replace(/\/$/, '')}/issues/${issueId}`
+}
+
 export interface RedmineIssue {
   id: number
   subject: string
-  status: {
-    id: number
-    name: string
-  }
+  status: RedmineIssueStatus
+  parent?: RedmineIssueRef
 }
 
 export async function getRedmineIssue(
@@ -526,6 +536,24 @@ export async function getRedmineIssue(
 
   const data = (await response.json()) as { issue: RedmineIssue }
   return data.issue || null
+}
+
+export async function getRedmineIssues(
+  redmineUrl: string,
+  redmineApiKey: string,
+  issueIds: number[],
+): Promise<RedmineIssue[]> {
+  if (!isBackground) {
+    return apiCall<RedmineIssue[]>('getRedmineIssues', [redmineUrl, redmineApiKey, issueIds])
+  }
+
+  // status_id=* so closed issues are not filtered out by Redmine's default open-only query.
+  return fetchAllPages<RedmineIssue>(
+    `${redmineUrl}/issues.json?issue_id=${issueIds.join(',')}&status_id=*`,
+    'issues',
+    redmineHeaders(redmineApiKey),
+    'issues',
+  )
 }
 
 export async function getUserMRs(
