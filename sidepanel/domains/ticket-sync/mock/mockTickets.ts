@@ -228,6 +228,46 @@ export const MOCK_TICKETS: ProcessedTicket[] = [
     ],
   },
 
+  // 6b. Two tickets share one MR: shown as one card
+  {
+    id: 13504,
+    title: '[backend-worker] Invoicee: DOCX layout, tables and fonts',
+    url: 'https://redmine.example.com/issues/13504',
+    status: 'Resolved',
+    mrs: [
+      {
+        iid: 668,
+        repo: 'backend-worker',
+        url: 'https://gitlab.example.com/team/backend-worker/-/merge_requests/668',
+        title: '[#13503][#13504] Invoicee document export',
+        state: 'opened',
+        has_conflicts: false,
+        has_open_review: false,
+        is_draft: false,
+        has_failed_pipeline: false,
+      },
+    ],
+  },
+  {
+    id: 13503,
+    title: '[backend-worker] Invoicee: PDF rendering (page breaks)',
+    url: 'https://redmine.example.com/issues/13503',
+    status: 'Resolved',
+    mrs: [
+      {
+        iid: 668,
+        repo: 'backend-worker',
+        url: 'https://gitlab.example.com/team/backend-worker/-/merge_requests/668',
+        title: '[#13503][#13504] Invoicee document export',
+        state: 'opened',
+        has_conflicts: false,
+        has_open_review: false,
+        is_draft: false,
+        has_failed_pipeline: false,
+      },
+    ],
+  },
+
   // 7. Untracked MR (No Ticket) with multiple MRs
   {
     id: null,

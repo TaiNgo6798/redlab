@@ -9,6 +9,7 @@ import {
 import { MOCK_TICKETS } from '../mock/mockTickets'
 import { TicketGroup } from '../types/index'
 import { DISPLAY_GROUPS, groupTickets } from '../utils/mrChips'
+import { countUniqueMrs } from '../utils/sharedMrGroups'
 import { TicketGroupItems } from './TicketSyncView'
 
 interface MockTicketsModalProps {
@@ -57,7 +58,7 @@ const MODAL_GROUP_CONFIG: Record<TicketGroup, ModalGroupConfig> = {
 export function MockTicketsModal({ open, onClose }: MockTicketsModalProps) {
   const groupedTickets = useMemo(() => groupTickets(MOCK_TICKETS), [])
 
-  const totalMRs = MOCK_TICKETS.reduce((acc, t) => acc + t.mrs.length, 0)
+  const totalMRs = countUniqueMrs(MOCK_TICKETS)
 
   return (
     <Modal

@@ -15,27 +15,27 @@ export interface MRStatusFlagConfig {
 export const MR_STATUS_FLAG_CONFIG: Record<MRStatusFlag, MRStatusFlagConfig> = {
   open: {
     label: 'open',
-    className: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+    className: 'bg-sky-400/20 text-sky-300 border border-transparent',
   },
   merged: {
     label: 'merged',
-    className: 'bg-sky-500/20 text-sky-400 border border-sky-500/30',
+    className: 'bg-emerald-400/20 text-emerald-300 border border-transparent',
   },
   draft: {
     label: 'draft',
-    className: 'bg-slate-500/20 text-slate-300 border border-slate-500/30',
+    className: 'bg-slate-400/15 text-slate-300 border border-transparent',
   },
   has_review: {
     label: 'has review',
-    className: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+    className: 'bg-amber-400/20 text-amber-200 border border-transparent',
   },
   test_failed: {
     label: 'test failed',
-    className: 'bg-red-500/20 text-red-400 border border-red-500/30',
+    className: 'bg-rose-400/20 text-rose-300 border border-transparent',
   },
   conflict: {
     label: 'conflict',
-    className: 'bg-rose-500/20 text-rose-400 border border-rose-500/30',
+    className: 'bg-rose-400/20 text-rose-300 border border-transparent',
   },
 }
 

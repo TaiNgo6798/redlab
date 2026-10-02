@@ -25,6 +25,7 @@ import {
   isNoCodeTicket,
   DISPLAY_GROUPS,
 } from '../utils/mrChips'
+import { countUniqueMrs, groupBySharedMrs } from '../utils/sharedMrGroups'
 import { ResolvedSubtaskList } from './ResolvedSubtaskList'
 
 const { Text } = Typography
@@ -71,42 +72,21 @@ export const TICKET_GROUP_CONFIG: Record<TicketGroup, TicketGroupConfig> = {
   },
 }
 
-function getTicketStatusInfo(status?: string): { className: string; dotClass: string } {
-  if (!status) {
-    return {
-      className: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
-      dotClass: 'bg-slate-400',
-    }
-  }
-  const normalized = status.toLowerCase()
+function getTicketStatusClass(status?: string): string {
+  const normalized = status?.toLowerCase() ?? ''
   if (normalized.includes('resolved') || normalized.includes('closed') || normalized.includes('done')) {
-    return {
-      className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-      dotClass: 'bg-emerald-400',
-    }
+    return 'bg-emerald-400/20 text-emerald-300'
   }
   if (normalized.includes('progress') || normalized.includes('developing')) {
-    return {
-      className: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
-      dotClass: 'bg-cyan-400',
-    }
+    return 'bg-sky-400/20 text-sky-300'
   }
   if (normalized.includes('feedback') || normalized.includes('review') || normalized.includes('testing')) {
-    return {
-      className: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-      dotClass: 'bg-amber-400',
-    }
+    return 'bg-amber-400/20 text-amber-200'
   }
   if (normalized.includes('new') || normalized.includes('open')) {
-    return {
-      className: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
-      dotClass: 'bg-purple-400',
-    }
+    return 'bg-violet-400/20 text-violet-300'
   }
-  return {
-    className: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
-    dotClass: 'bg-slate-400',
-  }
+  return 'bg-slate-400/15 text-slate-300'
 }
 
 function renderStatusFlagIcon(flag: MRStatusFlag) {
@@ -123,76 +103,87 @@ function renderStatusFlagIcon(flag: MRStatusFlag) {
       return <EditOutlined className="text-[10px]" />
     case 'open':
     default:
-      return <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      return <span className="h-1.5 w-1.5 rounded-full bg-current" />
   }
 }
 
+function TicketTitleLine({ ticket }: { ticket: ProcessedTicket }) {
+  const isNoTicket = !ticket.id || ticket.title === 'No ticket'
+  const statusClass = getTicketStatusClass(ticket.status)
+
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      {!isNoTicket ? (
+        <>
+          {ticket.status && (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold border border-transparent leading-none shrink-0 ${statusClass}`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              {ticket.status}
+            </span>
+          )}
+          {ticket.url ? (
+            <a
+              href={ticket.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-1.5 truncate text-sm font-medium text-text-primary no-underline flex-1 min-w-0"
+              title={`#${ticket.id} - ${ticket.title}`}
+            >
+              <span className="font-bold text-accent-light shrink-0">#{ticket.id}</span>
+              <span className="truncate group-hover:text-accent-light group-hover:underline transition-colors">
+                {ticket.title}
+              </span>
+            </a>
+          ) : (
+            <div
+              className="flex items-center gap-1.5 truncate text-sm font-medium text-text-primary flex-1 min-w-0"
+              title={`#${ticket.id} - ${ticket.title}`}
+            >
+              <span className="font-bold text-accent-light shrink-0">#{ticket.id}</span>
+              <span className="truncate">{ticket.title}</span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold border border-transparent bg-slate-400/15 text-slate-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            No ticket
+          </span>
+          <span className="text-xs text-text-secondary italic">Untracked Merge Requests</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export interface TicketPairCardProps {
-  ticket: ProcessedTicket
+  tickets: ProcessedTicket[]
   group?: TicketGroup
 }
 
 export function TicketPairCard({
-  ticket,
+  tickets,
   group: explicitGroup,
 }: TicketPairCardProps) {
+  const [ticket] = tickets
   const group = explicitGroup ?? getTicketGroup(ticket)
-  const isNoTicket = !ticket.id || ticket.title === 'No ticket'
-  const statusInfo = getTicketStatusInfo(ticket.status)
   const borderClass = TICKET_CARD_BORDER[group] ?? ''
 
   return (
     <PanelCard
       className={`p-3.5 flex flex-col gap-3 transition-all duration-200 hover:border-accent-light/40 ${borderClass}`}
     >
-      {/* Line 1: Ticket status + Ticket title */}
-      <div className="flex items-center gap-2 min-w-0">
-        {!isNoTicket ? (
-          <>
-            {ticket.status && (
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold border leading-none shrink-0 ${statusInfo.className}`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${statusInfo.dotClass}`} />
-                {ticket.status}
-              </span>
-            )}
-            {ticket.url ? (
-              <a
-                href={ticket.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center gap-1.5 truncate text-sm font-medium text-text-primary no-underline flex-1 min-w-0"
-                title={`#${ticket.id} - ${ticket.title}`}
-              >
-                <span className="font-bold text-accent-light shrink-0">#{ticket.id}</span>
-                <span className="truncate group-hover:text-accent-light group-hover:underline transition-colors">
-                  {ticket.title}
-                </span>
-              </a>
-            ) : (
-              <div
-                className="flex items-center gap-1.5 truncate text-sm font-medium text-text-primary flex-1 min-w-0"
-                title={`#${ticket.id} - ${ticket.title}`}
-              >
-                <span className="font-bold text-accent-light shrink-0">#{ticket.id}</span>
-                <span className="truncate">{ticket.title}</span>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold border bg-slate-500/15 text-slate-300 border-slate-500/30">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-              No ticket
-            </span>
-            <span className="text-xs text-text-secondary italic">Untracked Merge Requests</span>
-          </div>
-        )}
+      <div className="flex flex-col gap-2">
+        {tickets.map((linkedTicket, index) => (
+          <TicketTitleLine key={linkedTicket.id ?? index} ticket={linkedTicket} />
+        ))}
       </div>
 
       {isNoCodeTicket(ticket) ? (
-        <span className="self-start inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium leading-none bg-slate-500/20 text-slate-300 border border-slate-500/30">
+        <span className="self-start inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium leading-none bg-slate-400/15 text-slate-300 border border-transparent">
           no code
         </span>
       ) : (
@@ -247,19 +238,27 @@ export function TicketPairCard({
         <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs">
           <div className="flex items-center gap-1.5 min-w-0 truncate">
             <CheckCircleOutlined className="text-emerald-400 shrink-0 text-xs" />
-            <span className="font-medium truncate">Test & mark ticket as Testable</span>
+            <span className="font-medium truncate">
+              Test & mark {tickets.length === 1 ? 'ticket' : 'tickets'} as Testable
+            </span>
           </div>
-          {ticket.url && (
-            <a
-              href={ticket.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 font-semibold text-emerald-300 hover:text-emerald-200 hover:underline inline-flex items-center gap-1 text-[11px]"
-            >
-              <span>Open Ticket</span>
-              <ArrowRightOutlined className="text-[9px]" />
-            </a>
-          )}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {tickets.map(
+              (linkedTicket) =>
+                linkedTicket.url && (
+                  <a
+                    key={linkedTicket.id}
+                    href={linkedTicket.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 font-semibold text-emerald-300 hover:text-emerald-200 hover:underline inline-flex items-center gap-1 text-[11px]"
+                  >
+                    <span>{tickets.length === 1 ? 'Open Ticket' : `#${linkedTicket.id}`}</span>
+                    <ArrowRightOutlined className="text-[9px]" />
+                  </a>
+                ),
+            )}
+          </div>
         </div>
       )}
     </PanelCard>
@@ -278,10 +277,14 @@ export function TicketGroupItems({ group, tickets }: TicketGroupItemsProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      {tickets.map((ticket, index) => (
+      {groupBySharedMrs(tickets).map((cardTickets, index) => (
         <TicketPairCard
-          key={ticket.id !== null ? ticket.id : `no-ticket-${ticket.mrs[0]?.url || index}`}
-          ticket={ticket}
+          key={
+            cardTickets[0].id !== null
+              ? cardTickets.map((ticket) => ticket.id).join('-')
+              : `no-ticket-${cardTickets[0].mrs[0]?.url || index}`
+          }
+          tickets={cardTickets}
           group={group}
         />
       ))}
@@ -308,7 +311,7 @@ export function TicketSyncView({
   onRefresh,
   onConfigure,
 }: TicketSyncViewProps) {
-  const totalMRs = tickets.reduce((acc, t) => acc + t.mrs.length, 0)
+  const totalMRs = countUniqueMrs(tickets)
   const groupedTickets = useMemo(() => groupTickets(tickets), [tickets])
 
   const hasSpecialGroup =
