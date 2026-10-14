@@ -2,6 +2,7 @@ import '../styles/global.css'
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ConfigProvider } from 'antd'
+import { StyleProvider } from '@ant-design/cssinjs'
 import { GithubOutlined } from '@ant-design/icons'
 import { antdTheme } from '../styles/antd-theme'
 import type { ViewName } from './shared/types/index'
@@ -14,6 +15,9 @@ import { MockTicketsModal } from './domains/ticket-sync/components/MockTicketsMo
 import { useOverviewData } from './domains/overview/hooks/useOverviewData'
 import { useSettingsManager } from './domains/settings/hooks/useSettingsManager'
 import { useTicketSync } from './domains/ticket-sync/hooks/useTicketSync'
+import { installChromeShim } from './dev/chromeShim'
+
+if (import.meta.env.DEV && (typeof chrome === 'undefined' || !chrome.storage)) installChromeShim()
 
 function App() {
   const [view, setView] = useState<ViewName>('overview')
@@ -141,7 +145,9 @@ const container = document.getElementById('root') || document.body
 const root = createRoot(container)
 document.documentElement.classList.add('sidepanel')
 root.render(
-  <ConfigProvider theme={antdTheme}>
-    <App />
-  </ConfigProvider>
+  <StyleProvider layer>
+    <ConfigProvider theme={antdTheme}>
+      <App />
+    </ConfigProvider>
+  </StyleProvider>
 )

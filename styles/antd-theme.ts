@@ -24,6 +24,8 @@ export const antdTheme: ThemeConfig = {
     colorError: '#FF6B6B',
     colorLink: '#00a3b8',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif",
+    motionEaseOutBack: 'cubic-bezier(0.215, 0.61, 0.355, 1)',
+    motionEaseInBack: 'cubic-bezier(0.645, 0.045, 0.355, 1)',
     borderRadius: 8,
     borderRadiusLG: 12,
     controlHeight: 40,

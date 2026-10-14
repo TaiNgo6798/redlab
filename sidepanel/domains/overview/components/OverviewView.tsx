@@ -85,7 +85,7 @@ function RankingSection({ ranking, displayType, expectedHours, periodLabel, hasP
       {sortedRanking.map((user, index) => {
         const displayHours = displayType === 'remaining' ? Math.max(0, expectedHours - user.hours) : user.hours
         return (
-          <div key={user.id} className={`mb-1.5 flex cursor-pointer items-center rounded-lg bg-bg-card p-2.5 transition-transform duration-200 hover:translate-x-1 ${currentUser?.id === user.id ? 'border border-accent bg-gradient-to-r from-bg-card to-accent/20' : ''}`}>
+          <div key={user.id} className={`mb-1.5 flex cursor-pointer items-center rounded-lg bg-bg-card p-2.5 transition-transform duration-200 motion-safe:hover:translate-x-1 ${currentUser?.id === user.id ? 'border border-accent/60 bg-accent/15' : ''}`}>
             <span className="w-8 flex-shrink-0 text-center text-[20px] leading-none">{medals[index] || index + 1}</span>
             <div className="ml-2 min-w-0 flex-1"><Text className="block truncate text-sm font-medium">{user.name}{currentUser?.id === user.id ? ' (You)' : ''}</Text></div>
             <Tag className="ranking-hours-tag ml-2 min-w-[50px] flex-shrink-0 border-0 text-center font-bold">{formatHours(displayHours)}</Tag>
@@ -200,7 +200,7 @@ function TodayProgress({
             >
               {loggedHours.toFixed(1)}h
             </span>
-            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">Today</span>
+            <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">Today</span>
             {isSyncing && (
               <ThunderboltFilled className="today-progress-lightning-icon mt-1 text-sm text-accent-light" />
             )}

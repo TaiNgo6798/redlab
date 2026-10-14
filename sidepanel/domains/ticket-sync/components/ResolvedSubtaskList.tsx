@@ -16,15 +16,15 @@ interface SubtaskLineProps {
 
 function SubtaskLine({ ticket, parent }: SubtaskLineProps) {
   return (
-    <div className="flex items-center gap-2 min-w-0 px-3 py-1.5 rounded-xl bg-bg-primary/60 hover:bg-bg-primary/90 border border-white/5 hover:border-accent-light/40 text-sm transition-all">
+    <div className="flex items-center gap-2 min-w-0 px-3 py-1.5 rounded-xl bg-bg-primary/60 hover:bg-bg-primary/90 border border-white/5 hover:border-accent-light/40 text-sm transition-colors">
       <a
         href={ticket.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex flex-1 items-center gap-2 min-w-0 no-underline"
+        className="group flex min-h-6 flex-1 items-center gap-2 min-w-0 rounded no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-light"
         title={`#${ticket.id} - ${ticket.title}`}
       >
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+        <span className="h-1.5 w-1.5 rounded-full bg-status-merged-tint shrink-0" />
         <span className="font-bold text-accent-light shrink-0">#{ticket.id}</span>
         <span className="truncate text-text-primary group-hover:text-accent-light transition-colors">
           {ticket.title}
@@ -35,11 +35,11 @@ function SubtaskLine({ ticket, parent }: SubtaskLineProps) {
           href={parent.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 inline-flex items-center gap-1 text-xs text-text-secondary hover:text-accent-light no-underline"
+          className="shrink-0 inline-flex min-h-6 items-center gap-1 rounded text-xs text-text-secondary hover:text-accent-light no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-light"
           title={`Open ${parentLabel(parent)}`}
         >
           · of #{parent.id}
-          <ExportOutlined className="text-[10px]" />
+          <ExportOutlined aria-hidden className="text-[11px]" />
         </a>
       )}
     </div>
@@ -56,11 +56,11 @@ function SubtaskGroupCard({ parent, subtasks }: SubtaskGroup) {
           type="button"
           onClick={() => setExpanded((value) => !value)}
           aria-expanded={expanded}
-          className="flex flex-1 items-center gap-2 min-w-0 bg-transparent border-0 p-0 cursor-pointer text-left text-sm"
+          className="flex min-h-6 flex-1 items-center gap-2 min-w-0 rounded bg-transparent border-0 p-0 cursor-pointer text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-light"
           title={parentLabel(parent)}
         >
-          <RightOutlined
-            className={`shrink-0 text-[10px] text-text-secondary transition-transform ${expanded ? 'rotate-90' : ''}`}
+          <RightOutlined aria-hidden
+            className={`shrink-0 text-[11px] text-text-secondary transition-transform ${expanded ? 'rotate-90' : ''}`}
           />
           <span className="font-bold text-accent-light shrink-0">#{parent.id}</span>
           {parent.title && <span className="truncate text-text-primary">{parent.title}</span>}
@@ -73,10 +73,11 @@ function SubtaskGroupCard({ parent, subtasks }: SubtaskGroup) {
           href={parent.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 text-text-secondary hover:text-accent-light"
+          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-text-secondary hover:text-accent-light focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-light"
           title={`Open ${parentLabel(parent)}`}
+          aria-label={`Open ${parentLabel(parent)}`}
         >
-          <ExportOutlined className="text-[10px]" />
+          <ExportOutlined aria-hidden className="text-[11px]" />
         </a>
       </div>
       {expanded &&

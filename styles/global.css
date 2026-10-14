@@ -1,3 +1,5 @@
+@layer theme, base, antd, components, utilities;
+
 @import "tailwindcss";
 
 @theme {
@@ -17,6 +19,22 @@
   --color-bronze: #CD7F32;
   --color-brand-red: #B11612;
   --color-brand-orange: #FC6D26;
+  --color-brand-red-on-dark: #E85D58;
+  --color-accent-pressed: #006578;
+  --color-status-open: #7dd3fc;
+  --color-status-open-tint: #38bdf8;
+  --color-status-merged: #6ee7b7;
+  --color-status-merged-tint: #34d399;
+  --color-status-merged-deep: #10b981;
+  --color-status-draft: #cbd5e1;
+  --color-status-draft-tint: #94a3b8;
+  --color-status-draft-deep: #64748b;
+  --color-status-review: #fde68a;
+  --color-status-review-tint: #fbbf24;
+  --color-status-failed: #fda4af;
+  --color-status-failed-tint: #fb7185;
+  --color-status-new: #c4b5fd;
+  --color-status-new-tint: #a78bfa;
 }
 
 /* Base styles */
@@ -131,6 +149,10 @@ html.sidepanel #root {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
+
   .today-progress-electric-arc,
   .today-progress-electric-sparks,
   .today-progress-lightning-icon {
@@ -138,17 +160,8 @@ html.sidepanel #root {
   }
 }
 
-/* Gradient text for special elements */
-.gradient-text {
-  background: linear-gradient(135deg, #007990, #00a3b8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
 /* Remove inconsistent white focus shadows across AntD controls */
 .ant-btn:focus,
-.ant-btn:focus-visible,
 .ant-btn:active,
 .ant-input:focus,
 .ant-input-focused,
@@ -156,6 +169,12 @@ html.sidepanel #root {
 .ant-select-focused .ant-select-selector,
 .ant-picker-focused {
   outline: none !important;
+  box-shadow: none !important;
+}
+
+.ant-btn:focus-visible {
+  outline: 2px solid var(--color-accent-light) !important;
+  outline-offset: 2px;
   box-shadow: none !important;
 }
 
@@ -173,57 +192,8 @@ html.sidepanel #root {
 }
 
 .ranking-hours-tag {
-  background-color: #007990 !important;
+  background-color: var(--color-accent-pressed) !important;
   color: var(--color-text-primary) !important;
-}
-
-.mr-tag {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  padding: 2px 8px !important;
-  border-radius: 12px !important;
-}
-
-.mr-tag__icon {
-  flex-shrink: 0;
-  display: inline-block;
-}
-
-.mr-tag--opened {
-  background-color: rgba(34, 197, 94, 0.15) !important;
-  color: #4ade80 !important;
-  border: 1px solid rgba(34, 197, 94, 0.2) !important;
-}
-
-.mr-tag--merged {
-  background-color: rgba(56, 189, 248, 0.15) !important;
-  color: #7dd3fc !important;
-  border: 1px solid rgba(56, 189, 248, 0.2) !important;
-}
-
-.mr-tag--closed {
-  background-color: rgba(148, 163, 184, 0.15) !important;
-  color: #94a3b8 !important;
-  border: 1px solid rgba(148, 163, 184, 0.2) !important;
-}
-
-.mr-tag--conflict {
-  background-color: rgba(255, 107, 107, 0.15) !important;
-  color: #ff6b6b !important;
-  border: 1px solid rgba(255, 107, 107, 0.2) !important;
-}
-
-.mr-tag--danger {
-  background-color: rgba(255, 107, 107, 0.15) !important;
-  color: #ff6b6b !important;
-  border: 1px solid rgba(255, 107, 107, 0.2) !important;
-}
-
-.mr-tag--warning {
-  background-color: rgba(255, 167, 38, 0.15) !important;
-  color: #FFA726 !important;
-  border: 1px solid rgba(255, 167, 38, 0.2) !important;
 }
 
 .otp-statistic-accent .ant-statistic-content {
@@ -238,25 +208,6 @@ html.sidepanel #root {
   border-color: #ff6b6b !important;
   color: var(--color-text-primary) !important;
   font-weight: 600;
-}
-
-.member-card .ant-card-body {
-  padding: 20px !important;
-}
-
-.rank-1 {
-  border-color: #ffd700 !important;
-  background: linear-gradient(to bottom right, #16213e, rgba(255, 215, 0, 0.1)) !important;
-}
-
-.rank-2 {
-  border-color: #c0c0c0 !important;
-  background: linear-gradient(to bottom right, #16213e, rgba(192, 192, 192, 0.1)) !important;
-}
-
-.rank-3 {
-  border-color: #cd7f32 !important;
-  background: linear-gradient(to bottom right, #16213e, rgba(205, 127, 50, 0.1)) !important;
 }
 
 /* Glass Select — default = form radius; compact header uses .glass-select--pill */
@@ -327,7 +278,7 @@ html.sidepanel #root {
 }
 
 .glass-select-dropdown.ant-select-dropdown {
-  border-radius: 14px !important;
+  border-radius: 12px !important;
   background: rgba(22, 33, 62, 0.96) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35) !important;
@@ -373,36 +324,6 @@ html.sidepanel #root {
   font-weight: 600 !important;
 }
 
-.member-statistic .ant-statistic-content {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.perf-sort-card .ant-card-body {
-  padding: 12px 20px !important;
-}
-
-.feature-icon {
-  font-size: 22px;
-  color: #00a3b8;
-}
-
-.feature-icon-lg {
-  font-size: 40px;
-}
-
-.coming-soon-icon-bg {
-  background: linear-gradient(135deg, rgba(0, 121, 144, 0.15), rgba(0, 163, 184, 0.25));
-}
-
-.coming-soon-feature-card .ant-card-body {
-  padding: 24px 16px !important;
-}
-
-.feature-icon-box {
-  background: rgba(0, 121, 144, 0.15);
-}
-
 /* Redesigned Tooltips */
 .ant-tooltip .ant-tooltip-inner {
   background: rgba(11, 19, 34, 0.94) !important;
@@ -415,7 +336,7 @@ html.sidepanel #root {
   font-weight: 500 !important;
   letter-spacing: 0.01em !important;
   padding: 4px 8px !important;
-  border-radius: 7px !important;
+  border-radius: 8px !important;
   min-height: auto !important;
   line-height: 1.35 !important;
 }

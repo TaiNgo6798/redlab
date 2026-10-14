@@ -35,23 +35,23 @@ const MODAL_GROUP_CONFIG: Record<TicketGroup, ModalGroupConfig> = {
     title: 'Ready to Test',
     sublabel: {
       text: 'Action required',
-      className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+      className: 'border-status-merged-deep/30 bg-status-merged-deep/10 text-status-merged',
     },
-    icon: <CheckCircleOutlined className="text-emerald-400 text-xs" />,
-    titleClassName: 'text-[11px] font-bold text-emerald-300 uppercase tracking-wider',
-    badgeClassName: 'm-0 border border-emerald-500/30 bg-emerald-500/15 text-[10px] text-emerald-300 font-semibold rounded-full px-1.5 py-0 leading-none',
+    icon: <CheckCircleOutlined aria-hidden className="text-status-merged-tint text-xs" />,
+    titleClassName: 'text-[11px] font-bold text-status-merged uppercase tracking-wider',
+    badgeClassName: 'm-0 border border-status-merged-deep/30 bg-status-merged-deep/15 text-xs text-status-merged font-semibold rounded-full px-1.5 py-0 leading-none',
   },
   [TicketGroup.ResolvedSubtask]: {
     title: 'Resolved Sub-tasks',
-    icon: <ApartmentOutlined className="text-slate-400 text-xs" />,
-    titleClassName: 'text-[11px] font-bold text-slate-300 uppercase tracking-wider',
-    badgeClassName: 'm-0 border border-slate-500/30 bg-slate-500/15 text-[10px] text-slate-300 font-semibold rounded-full px-1.5 py-0 leading-none',
+    icon: <ApartmentOutlined aria-hidden className="text-status-draft-tint text-xs" />,
+    titleClassName: 'text-[11px] font-bold text-status-draft uppercase tracking-wider',
+    badgeClassName: 'm-0 border border-status-draft-deep/30 bg-status-draft-deep/15 text-xs text-status-draft font-semibold rounded-full px-1.5 py-0 leading-none',
   },
   [TicketGroup.Active]: {
     title: 'Active Tickets & MRs',
-    icon: <BranchesOutlined className="text-accent-light text-xs" />,
+    icon: <BranchesOutlined aria-hidden className="text-accent-light text-xs" />,
     titleClassName: 'text-[11px] font-bold text-text-secondary uppercase tracking-wider',
-    badgeClassName: 'm-0 border border-white/10 bg-white/5 text-[10px] text-text-secondary rounded-full px-1.5 py-0 leading-none',
+    badgeClassName: 'm-0 border border-white/10 bg-white/5 text-xs text-text-secondary rounded-full px-1.5 py-0 leading-none',
   },
 }
 
@@ -65,17 +65,17 @@ export function MockTicketsModal({ open, onClose }: MockTicketsModalProps) {
       open={open}
       onCancel={onClose}
       footer={null}
-      closeIcon={<CloseOutlined className="text-white/40 hover:text-white transition-colors text-xs" />}
+      closeIcon={<CloseOutlined aria-hidden className="text-white/40 hover:text-white transition-colors text-xs" />}
       title={
         <div className="flex items-center gap-2 pr-3">
           <div className="h-6 w-6 rounded-lg bg-accent/20 border border-accent-light/30 flex items-center justify-center text-accent-light text-xs">
-            <BranchesOutlined />
+            <BranchesOutlined aria-hidden />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold tracking-tight text-white leading-tight">
               Ticket Sync Cases
             </span>
-            <span className="text-[10px] text-text-secondary font-normal">
+            <span className="text-xs text-text-secondary font-normal">
               Status combinations preview
             </span>
           </div>
@@ -91,8 +91,8 @@ export function MockTicketsModal({ open, onClose }: MockTicketsModalProps) {
         },
         content: {
           background: 'var(--color-bg-sidebar)',
-          border: '1px solid rgba(255, 255, 255, 0.09)',
-          borderRadius: 18,
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: 16,
           padding: '16px',
           boxShadow: '0 24px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
         },
@@ -140,7 +140,7 @@ export function MockTicketsModal({ open, onClose }: MockTicketsModalProps) {
                     </Tag>
                   </div>
                   {config.sublabel && (
-                    <Tag className={`m-0 text-[10px] font-medium border rounded-md px-1.5 py-0 leading-none ${config.sublabel.className}`}>
+                    <Tag className={`m-0 text-xs font-medium border rounded-md px-1.5 py-0 leading-none ${config.sublabel.className}`}>
                       {config.sublabel.text}
                     </Tag>
                   )}

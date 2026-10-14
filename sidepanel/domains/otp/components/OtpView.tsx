@@ -61,7 +61,7 @@ export function OtpView() {
         <div className="flex flex-col gap-2">
           {otp.codes.length === 0 && <Text type="secondary" className="text-sm">No authenticator yet.</Text>}
           {otp.codes.map((item) => (
-            <div key={item.id} className="relative overflow-hidden rounded-lg border border-white/10 bg-bg-card p-3 shadow-sm">
+            <div key={item.id} className="relative overflow-hidden rounded-xl bg-white/5 p-3">
               <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-1.5">
                 <span className="truncate text-xs font-bold text-text-primary">{item.name}</span>
                 <div className="flex items-center gap-0.5 text-xs text-text-secondary flex-shrink-0 [&_.ant-btn]:h-auto! [&_.ant-btn]:px-1.5! [&_.ant-btn]:py-0.5! [&_.ant-btn]:text-[11px]!">

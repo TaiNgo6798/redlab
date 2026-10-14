@@ -31,7 +31,7 @@ import { ResolvedSubtaskList } from './ResolvedSubtaskList'
 const { Text } = Typography
 
 export const TICKET_CARD_BORDER: Partial<Record<TicketGroup, string>> = {
-  [TicketGroup.ReadyToTest]: 'border-emerald-500/30',
+  [TicketGroup.ReadyToTest]: 'border-status-merged-deep/30',
 }
 
 interface TicketGroupSublabel {
@@ -52,22 +52,22 @@ export const TICKET_GROUP_CONFIG: Record<TicketGroup, TicketGroupConfig> = {
     title: 'Ready to Test',
     sublabel: {
       text: 'Mark to Testable',
-      className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+      className: 'border-status-merged-deep/30 bg-status-merged-deep/10 text-status-merged',
     },
-    icon: <CheckCircleOutlined className="text-emerald-400 text-sm" />,
-    titleClassName: 'text-xs font-bold text-emerald-300 uppercase tracking-wider',
-    badgeClassName: 'm-0 border border-emerald-500/30 bg-emerald-500/15 text-xs text-emerald-300 font-semibold rounded-full px-2',
+    icon: <CheckCircleOutlined aria-hidden className="text-status-merged-tint text-sm" />,
+    titleClassName: 'm-0 text-xs font-bold text-status-merged uppercase tracking-wider',
+    badgeClassName: 'm-0 border border-status-merged-deep/30 bg-status-merged-deep/15 text-xs text-status-merged font-semibold rounded-full px-2',
   },
   [TicketGroup.ResolvedSubtask]: {
     title: 'Resolved Sub-tasks',
-    icon: <ApartmentOutlined className="text-slate-400 text-sm" />,
-    titleClassName: 'text-xs font-bold text-slate-300 uppercase tracking-wider',
-    badgeClassName: 'm-0 border border-slate-500/30 bg-slate-500/15 text-xs text-slate-300 font-semibold rounded-full px-2',
+    icon: <ApartmentOutlined aria-hidden className="text-status-draft-tint text-sm" />,
+    titleClassName: 'm-0 text-xs font-bold text-status-draft uppercase tracking-wider',
+    badgeClassName: 'm-0 border border-status-draft-deep/30 bg-status-draft-deep/15 text-xs text-status-draft font-semibold rounded-full px-2',
   },
   [TicketGroup.Active]: {
     title: 'Active Tickets & MRs',
-    icon: <BranchesOutlined className="text-accent-light text-sm" />,
-    titleClassName: 'text-xs font-bold text-text-secondary uppercase tracking-wider',
+    icon: <BranchesOutlined aria-hidden className="text-accent-light text-sm" />,
+    titleClassName: 'm-0 text-xs font-bold text-text-secondary uppercase tracking-wider',
     badgeClassName: 'm-0 border border-white/10 bg-white/5 text-xs text-text-secondary rounded-full px-2',
   },
 }
@@ -75,32 +75,32 @@ export const TICKET_GROUP_CONFIG: Record<TicketGroup, TicketGroupConfig> = {
 function getTicketStatusClass(status?: string): string {
   const normalized = status?.toLowerCase() ?? ''
   if (normalized.includes('resolved') || normalized.includes('closed') || normalized.includes('done')) {
-    return 'bg-emerald-400/20 text-emerald-300'
+    return 'bg-status-merged-tint/20 text-status-merged'
   }
   if (normalized.includes('progress') || normalized.includes('developing')) {
-    return 'bg-sky-400/20 text-sky-300'
+    return 'bg-status-open-tint/20 text-status-open'
   }
   if (normalized.includes('feedback') || normalized.includes('review') || normalized.includes('testing')) {
-    return 'bg-amber-400/20 text-amber-200'
+    return 'bg-status-review-tint/20 text-status-review'
   }
   if (normalized.includes('new') || normalized.includes('open')) {
-    return 'bg-violet-400/20 text-violet-300'
+    return 'bg-status-new-tint/20 text-status-new'
   }
-  return 'bg-slate-400/15 text-slate-300'
+  return 'bg-status-draft-tint/15 text-status-draft'
 }
 
 function renderStatusFlagIcon(flag: MRStatusFlag) {
   switch (flag) {
     case 'has_review':
-      return <CommentOutlined className="text-[10px]" />
+      return <CommentOutlined aria-hidden className="text-[11px]" />
     case 'test_failed':
-      return <CloseCircleOutlined className="text-[10px]" />
+      return <CloseCircleOutlined aria-hidden className="text-[11px]" />
     case 'conflict':
-      return <WarningOutlined className="text-[10px]" />
+      return <WarningOutlined aria-hidden className="text-[11px]" />
     case 'merged':
-      return <CheckOutlined className="text-[10px]" />
+      return <CheckOutlined aria-hidden className="text-[11px]" />
     case 'draft':
-      return <EditOutlined className="text-[10px]" />
+      return <EditOutlined aria-hidden className="text-[11px]" />
     case 'open':
     default:
       return <span className="h-1.5 w-1.5 rounded-full bg-current" />
@@ -128,7 +128,7 @@ function TicketTitleLine({ ticket }: { ticket: ProcessedTicket }) {
               href={ticket.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-1.5 truncate text-sm font-medium text-text-primary no-underline flex-1 min-w-0"
+              className="group flex min-h-6 items-center gap-1.5 truncate rounded text-sm font-medium text-text-primary no-underline flex-1 min-w-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-light"
               title={`#${ticket.id} - ${ticket.title}`}
             >
               <span className="font-bold text-accent-light shrink-0">#{ticket.id}</span>
@@ -148,7 +148,7 @@ function TicketTitleLine({ ticket }: { ticket: ProcessedTicket }) {
         </>
       ) : (
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold border border-transparent bg-slate-400/15 text-slate-300">
+          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold border border-transparent bg-status-draft-tint/15 text-status-draft">
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             No ticket
           </span>
@@ -174,7 +174,7 @@ export function TicketPairCard({
 
   return (
     <PanelCard
-      className={`p-3.5 flex flex-col gap-3 transition-all duration-200 hover:border-accent-light/40 ${borderClass}`}
+      className={`p-3.5 flex flex-col gap-3 transition-colors duration-200 hover:border-accent-light/40 ${borderClass}`}
     >
       <div className="flex flex-col gap-2">
         {tickets.map((linkedTicket, index) => (
@@ -183,7 +183,7 @@ export function TicketPairCard({
       </div>
 
       {isNoCodeTicket(ticket) ? (
-        <span className="self-start inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium leading-none bg-slate-400/15 text-slate-300 border border-transparent">
+        <span className="self-start inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium leading-none bg-status-draft-tint/15 text-status-draft border border-transparent">
           no code
         </span>
       ) : (
@@ -196,13 +196,13 @@ export function TicketPairCard({
                 href={mr.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="no-underline group"
+                className="no-underline group block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-light"
                 title={mr.title ? `${mr.repo}!${mr.iid}: ${mr.title}` : `${mr.repo}!${mr.iid}`}
               >
-                <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-bg-primary/60 hover:bg-bg-primary/90 border border-white/5 hover:border-accent-light/40 transition-all cursor-pointer">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-1.5 rounded-xl bg-bg-primary/60 hover:bg-bg-primary/90 border border-white/5 hover:border-accent-light/40 transition-colors cursor-pointer">
                   {/* Left: Repo & IID */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <BranchesOutlined className="text-accent-light text-xs shrink-0" />
+                  <div className="flex min-h-6 flex-1 basis-28 items-center gap-2 min-w-0">
+                    <BranchesOutlined aria-hidden className="text-accent-light text-xs shrink-0" />
                     <span className="text-xs font-semibold text-text-primary group-hover:text-accent-light transition-colors truncate">
                       {mr.repo}
                     </span>
@@ -212,13 +212,13 @@ export function TicketPairCard({
                   </div>
 
                   {/* Right: Status Flags */}
-                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                  <div className="ml-auto flex items-center gap-1.5 flex-wrap justify-end">
                     {flags.map((flag) => {
                       const config = MR_STATUS_FLAG_CONFIG[flag]
                       return (
                         <span
                           key={flag}
-                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium leading-none ${config.className}`}
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium leading-none ${config.className}`}
                         >
                           {renderStatusFlagIcon(flag)}
                           <span>{config.label}</span>
@@ -235,9 +235,9 @@ export function TicketPairCard({
 
       {/* Notice for Ready to Test cards */}
       {group === TicketGroup.ReadyToTest && (
-        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs">
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-status-merged-deep/10 border border-status-merged-deep/25 text-status-merged text-xs">
           <div className="flex items-center gap-1.5 min-w-0 truncate">
-            <CheckCircleOutlined className="text-emerald-400 shrink-0 text-xs" />
+            <CheckCircleOutlined aria-hidden className="text-status-merged-tint shrink-0 text-xs" />
             <span className="font-medium truncate">
               Test & mark {tickets.length === 1 ? 'ticket' : 'tickets'} as Testable
             </span>
@@ -251,10 +251,10 @@ export function TicketPairCard({
                     href={linkedTicket.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 font-semibold text-emerald-300 hover:text-emerald-200 hover:underline inline-flex items-center gap-1 text-[11px]"
+                    className="shrink-0 min-h-6 rounded font-semibold text-status-merged hover:text-status-review hover:underline inline-flex items-center gap-1 text-[11px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-light"
                   >
                     <span>{tickets.length === 1 ? 'Open Ticket' : `#${linkedTicket.id}`}</span>
-                    <ArrowRightOutlined className="text-[9px]" />
+                    <ArrowRightOutlined aria-hidden className="text-[11px]" />
                   </a>
                 ),
             )}
@@ -322,11 +322,11 @@ export function TicketSyncView({
     <main className="flex flex-1 flex-col gap-4 p-4 fade-in">
       {showState === 'notConfigured' && (
         <PanelCard className="p-6 text-center">
-          <ExclamationCircleOutlined className="mb-3 text-2xl text-warning" />
+          <ExclamationCircleOutlined aria-hidden className="mb-3 text-2xl text-warning" />
           <Text type="secondary" className="mb-4 block">
             Configure your Redmine and GitLab credentials in Settings to use Ticket Sync.
           </Text>
-          <Button type="primary" icon={<SettingOutlined />} onClick={onConfigure}>
+          <Button type="primary" icon={<SettingOutlined aria-hidden />} onClick={onConfigure}>
             Open Settings
           </Button>
         </PanelCard>
@@ -334,11 +334,11 @@ export function TicketSyncView({
 
       {showState === 'needsPermission' && (
         <PanelCard className="p-6 text-center">
-          <ExclamationCircleOutlined className="mb-3 text-2xl text-danger" />
+          <ExclamationCircleOutlined aria-hidden className="mb-3 text-2xl text-danger" />
           <Text type="danger" className="mb-4 block">
             {error}
           </Text>
-          <Button type="primary" icon={<SettingOutlined />} onClick={onConfigure}>
+          <Button type="primary" icon={<SettingOutlined aria-hidden />} onClick={onConfigure}>
             Open Settings
           </Button>
         </PanelCard>
@@ -346,8 +346,9 @@ export function TicketSyncView({
 
       {showState === 'error' && (
         <PanelCard className="p-6 text-center">
-          <ExclamationCircleOutlined className="mb-3 text-2xl text-danger" />
-          <Text type="danger" className="mb-4 block">
+          <ExclamationCircleOutlined aria-hidden className="mb-3 text-2xl text-danger" />
+          <span className="mb-1 block text-base font-semibold text-text-primary">Couldn't sync tickets</span>
+          <Text type="danger" className="mb-4 block text-xs break-words">
             {error}
           </Text>
           <Button onClick={onRefresh}>Retry</Button>
@@ -377,19 +378,32 @@ export function TicketSyncView({
               <Button
                 type="text"
                 size="small"
-                icon={<SyncOutlined className="text-text-secondary hover:text-accent-light" />}
+                icon={<SyncOutlined aria-hidden className="text-text-secondary hover:text-accent-light" />}
                 onClick={onRefresh}
                 title="Refresh Tickets"
+                aria-label="Refresh tickets"
               />
             )}
           </div>
+
+          {error && !isSyncing && (
+            <div
+              role="status"
+              className="flex items-start gap-2 rounded-xl border border-status-review-tint/25 bg-status-review-tint/10 px-3 py-2 text-xs text-status-review"
+            >
+              <WarningOutlined aria-hidden className="mt-0.5 shrink-0" />
+              <span className="min-w-0 break-words">
+                Last refresh failed{tickets.length > 0 ? ', showing cached tickets' : ''}. {error}
+              </span>
+            </div>
+          )}
 
           {/* Sync Progress */}
           {isSyncing && (
             <PanelCard className="flex flex-col gap-1.5 p-3">
               <div className="flex justify-between text-xs text-text-secondary">
                 <span className="flex items-center gap-1.5">
-                  <SyncOutlined spin className="text-accent-light" />
+                  <SyncOutlined aria-hidden spin className="text-accent-light" />
                   Syncing latest MRs & tickets...
                 </span>
                 <span className="font-mono">{syncProgress}%</span>
@@ -398,7 +412,7 @@ export function TicketSyncView({
                 percent={syncProgress}
                 showInfo={false}
                 size={['100%', 4]}
-                strokeColor={{ from: 'var(--color-accent-light)', to: 'var(--color-success)' }}
+                strokeColor="var(--color-accent-light)"
               />
             </PanelCard>
           )}
@@ -406,7 +420,7 @@ export function TicketSyncView({
           {/* Ticket List */}
           {tickets.length === 0 ? (
             <PanelCard className="p-8 text-center flex flex-col items-center justify-center gap-2">
-              <span className="text-3xl mb-1">🎉</span>
+              <CheckCircleOutlined aria-hidden className="mb-1 text-3xl text-status-merged-tint" />
               <span className="text-base font-semibold text-text-primary">All Caught Up</span>
               <Text type="secondary" className="block text-xs max-w-[240px]">
                 No active merge requests or pending tickets found on your account.
@@ -427,16 +441,16 @@ export function TicketSyncView({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           {config.icon}
-                          <span className={config.titleClassName}>
+                          <h2 className={config.titleClassName}>
                             {config.title}
-                          </span>
+                          </h2>
                           <Tag className={config.badgeClassName}>
                             {groupTickets.length}
                           </Tag>
                         </div>
                         {config.sublabel && (
                           <Tag
-                            className={`m-0 text-[11px] font-medium border rounded-md px-1.5 py-0 leading-none ${config.sublabel.className}`}
+                            className={`m-0 text-[11px] font-medium border rounded-md px-2 py-0.5 leading-none ${config.sublabel.className}`}
                           >
                             {config.sublabel.text}
                           </Tag>
